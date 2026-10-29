@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Solo’s Academy</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="A private learning app for ages 2 to 10: languages, sing-along sounds, English talking, feelings, activities, and a path to big goals.">
+<meta name="theme-color" content="#d9efff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Solo’s Academy">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="retro.css">
+</head>
+<body>
+<div id="app">
+  <header class="top" id="top">
+    <div class="brand">
+      <span class="brand-plane" aria-hidden="true">✈️</span>
+      <span class="mascot-slot"></span>
+      <div>
+        <h1>Solo’s Academy</h1>
+        <p id="subtitle" class="sub"></p>
+      </div>
+    </div>
+    <div class="top-right">
+      <button class="stars" id="starBtn" data-act="go" data-to="words" aria-label="Stars earned"><span aria-hidden="true">⭐</span> <b id="starCount">0</b></button>
+      <button class="icon-btn" id="roleBtn" data-act="role-toggle" aria-label="Switch view">👧</button>
+      <button class="icon-btn" id="settingsBtn" data-act="go" data-to="settings" aria-label="Settings">⚙️</button>
+    </div>
+  </header>
+
+  <main id="view" tabindex="-1" aria-live="polite"></main>
+
+  <nav class="tabs" id="tabs" aria-label="Main">
+    <button data-act="go" data-to="today"><span>🏠</span>Today</button>
+    <button data-act="go" data-to="words"><span>🗣️</span>Words</button>
+    <button data-act="go" data-to="play"><span>🎬</span>Play</button>
+    <button data-act="go" data-to="feel"><span>💛</span>Feelings</button>
+    <button data-act="go" data-to="theme"><span>🌳</span>Theme</button>
+    <button data-act="go" data-to="grow"><span>🚀</span>Grow</button>
+    <button data-act="go" data-to="act"><span>🎭</span>Activities</button>
+  </nav>
+</div>
+
+<div id="splash" class="splash" hidden>
+  <div class="splash-inner">
+    <span class="mascot-slot splash-mascot"></span>
+    <h1 class="splash-title" aria-label="Let’s Learn!"><span>L</span><span>e</span><span>t</span><span>’</span><span>s</span> <span>L</span><span>e</span><span>a</span><span>r</span><span>n</span><span>!</span></h1>
+    <p class="splash-sub">Solo’s Academy</p>
+    <button class="splash-play" data-act="splash-go">▶ Play!</button>
+  </div>
+</div>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" id="modalCard"></div>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<noscript><p style="padding:24px">Solo’s Academy needs JavaScript. Please turn it on in your browser.</p></noscript>
+
+<script src="js/data-words.js"></script>
+<script src="js/data-english.js"></script>
+<script src="js/data-trees.js"></script>
+<script src="js/data-water.js"></script>
+<script src="js/data-helpers.js"></script>
+<script src="js/data-moving.js"></script>
+<script src="js/data-buildings.js"></script>
+<script src="js/data-pathway.js"></script>
+<script src="js/data-fun.js"></script>
+<script src="js/data-parent.js"></script>
+<script src="js/parent.js"></script>
+<script src="js/fun.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

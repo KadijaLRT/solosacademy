@@ -1,0 +1,895 @@
+/* Solo's Academy app logic. Everything runs on this device. No accounts, no tracking. The only network use is the optional Groq story button. */
+(function () {
+  'use strict';
+  const S = window.SA;
+  const KEY = 'solosacademy.v1';
+  const OLD_KEY = 'skyacademy.v1'; // earlier name, read once so nothing is lost
+
+  /* ---------- helpers ---------- */
+  const $ = (s, el) => (el || document).querySelector(s);
+  const $$ = (s, el) => Array.from((el || document).querySelectorAll(s));
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pad = (n) => String(n).padStart(2, '0');
+  const dkey = (d) => { d = d || new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+  const dayNum = (d) => { d = d || new Date(); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000); };
+  const parseKey = (k) => { const p = String(k).split('-').map(Number); return new Date(p[0], (p[1] || 1) - 1, p[2] || 1); };
+  const pick = (arr, n) => arr[((n % arr.length) + arr.length) % arr.length];
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const LBY = {}; S.langs.forEach((l) => { LBY[l.id] = l; });
+  const WBY = {}; S.words.forEach((w) => { WBY[w.id] = w; });
+  const CATBY = {}; S.categories.forEach((c) => { CATBY[c.id] = c; });
+  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+  const KID_TABS = [['play', '🎬', 'Play'], ['words', '🗣️', 'Words'], ['feel', '💛', 'Feelings'], ['stars', '⭐', 'Stickers']];
+  const PARENT_TABS = [['today', '🏠', 'Today'], ['words', '🗣️', 'Words'], ['play', '🎬', 'Play'], ['feel', '💛', 'Feelings'], ['theme', '🌳', 'Theme'], ['grow', '🚀', 'Grow'], ['act', '🎭', 'Activities']];
+
+  /* ---------- state ---------- */
+  function defaults() {
+    return {
+      v: 1, birth: '', nick: 'Solana', role: 'parent', pinHash: '', pinSalt: '', themeStart: '', mode: 'focus', focusLang: 'es', level: 'standard', rate: 0.8,
+      done: {}, learned: {}, said: {}, feelLog: {}, milestones: {}, activities: null, quizStars: 0, onboarded: false,
+      look: 'retro', unit: 'trees', songDays: [], log: [], customWords: {}, fmastered: {}, homeSetup: {}, unitStarts: {}
+    };
+  }
+  function load() {
+    const s = defaults();
+    try {
+      const raw = localStorage.getItem(KEY) || localStorage.getItem(OLD_KEY);
+      if (raw) { const o = JSON.parse(raw); Object.keys(o).forEach((k) => { s[k] = o[k]; }); }
+    } catch (e) { /* storage may be blocked; app still works for this session */ }
+    if (!s.activities) s.activities = JSON.parse(JSON.stringify(S.activityDefaults));
+    if (!s.themeStart) s.themeStart = dkey();
+    return s;
+  }
+  let state = load();
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    updateHeader();
+  }
+
+  const ui = { wlang: null, wcat: 'all', tweek: null, gtab: 'miles', mband: null, cardList: [], cardIdx: 0, openDetails: {} };
+
+  /* ---------- derived ---------- */
+  function ageYears() {
+    if (!state.birth) return null;
+    const p = state.birth.split('-').map(Number);
+    if (!p[0] || !p[1]) return null;
+    return (Date.now() - new Date(p[0], p[1] - 1, 1).getTime()) / (365.25 * 86400000);
+  }
+  function growthBand() {
+    const a = ageYears();
+    if (a == null) return S.growth[0];
+    for (const g of S.growth) { if (a >= g.min && a < g.max) return g; }
+    return a >= 12 ? S.growth[S.growth.length - 1] : S.growth[0];
+  }
+  function defaultMilestoneBand() {
+    const a = ageYears();
+    if (a == null || a < 4) return 'm3';
+    if (a < 5) return 'm4';
+    return 'm5';
+  }
+  function planTheme() { return S.themes.find((t) => t.id === state.unit) || S.themes[0]; }
+  function startFor(id) {
+    if (id === 'trees') return state.themeStart || dkey();
+    state.unitStarts = state.unitStarts || {};
+    if (!state.unitStarts[id]) { state.unitStarts[id] = dkey(); save(); }
+    return state.unitStarts[id];
+  }
+  function themeInfo() {
+    const th = planTheme();
+    const diff = dayNum() - dayNum(parseKey(startFor(th.id)));
+    let n = Math.floor(diff / 7); let pre = false; let over = false;
+    if (n < 0) { n = 0; pre = true; }
+    if (n >= th.weeks.length) { n = th.weeks.length - 1; over = true; }
+    return { th, n, week: th.weeks[n], pre, over, diff: Math.max(0, diff) };
+  }
+  function chosenLang() {
+    if (state.mode === 'tour') return S.langs[dayNum() % S.langs.length].id;
+    return state.focusLang || 'es';
+  }
+  function wordsFor(lang) { return S.words.filter((w) => w[lang]); }
+  const lkey = (lang, id) => lang + ':' + id;
+  function learnedCount(lang) { return Object.keys(state.learned).filter((k) => k.indexOf(lang + ':') === 0 && state.learned[k]).length; }
+  function starTotal() {
+    let n = 0;
+    Object.keys(state.done).forEach((d) => { Object.keys(state.done[d]).forEach((b) => { if (state.done[d][b]) n++; }); });
+    n += Object.keys(state.said).filter((k) => state.said[k]).length;
+    n += state.quizStars || 0;
+    n += (state.songDays || []).length;
+    return n;
+  }
+
+  /* ---------- toast + modal ---------- */
+  let toastTimer = null;
+  function toast(msg) {
+    const t = $('#toast');
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, 2200);
+  }
+  function openModal(html) {
+    $('#modalCard').innerHTML = html;
+    $('#modal').hidden = false;
+    $('#modalCard').scrollTop = 0;
+  }
+  function closeModal() {
+    $('#modal').hidden = true; $('#modalCard').innerHTML = '';
+    stopBreath(); stopRecording(true);
+    try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) { /* ignore */ }
+  }
+
+  /* ---------- speech ---------- */
+  let voices = [];
+  function loadVoices() { try { if ('speechSynthesis' in window) voices = speechSynthesis.getVoices() || []; } catch (e) { voices = []; } }
+  function normTag(t) { return String(t || '').toLowerCase().replace('_', '-'); }
+  function findVoice(tag) {
+    if (!voices.length) loadVoices();
+    const t = normTag(tag); const base = t.split('-')[0];
+    return voices.find((v) => normTag(v.lang) === t) || voices.find((v) => normTag(v.lang).split('-')[0] === base) || null;
+  }
+  function hasVoice(tag) { return !!findVoice(tag); }
+  function speak(text, tag, slow) {
+    try {
+      if (!('speechSynthesis' in window)) return false;
+      const v = findVoice(tag);
+      if (!v && tag.split('-')[0] === 'zu') return false;
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = tag; if (v) u.voice = v;
+      u.rate = clamp((state.rate || 0.8) * (slow ? 0.65 : 1), 0.3, 1.2);
+      u.pitch = 1.05;
+      speechSynthesis.speak(u);
+      return true;
+    } catch (e) { return false; }
+  }
+  if ('speechSynthesis' in window) { loadVoices(); try { speechSynthesis.onvoiceschanged = loadVoices; } catch (e) { /* ignore */ } }
+
+  /* ---------- recordings (IndexedDB) ---------- */
+  let dbp = null; let recSet = new Set(); let recorder = null; let recStream = null; let recChunks = []; let recTarget = null;
+  function db() {
+    if (dbp) return dbp;
+    dbp = new Promise((res, rej) => {
+      try {
+        const r = indexedDB.open('skyacademy-audio', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('rec');
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+      } catch (e) { rej(e); }
+    });
+    return dbp;
+  }
+  function idb(mode, fn) {
+    return db().then((d) => new Promise((res, rej) => {
+      const tx = d.transaction('rec', mode); const rq = fn(tx.objectStore('rec'));
+      tx.oncomplete = () => res(rq ? rq.result : undefined);
+      tx.onerror = () => rej(tx.error);
+    }));
+  }
+  const recPut = (k, b) => idb('readwrite', (s) => s.put(b, k));
+  const recGet = (k) => idb('readonly', (s) => s.get(k));
+  const recDel = (k) => idb('readwrite', (s) => s.delete(k));
+  const recKeys = () => idb('readonly', (s) => s.getAllKeys());
+  recKeys().then((k) => { recSet = new Set(k || []); }).catch(() => {});
+
+  function stopRecording(discard) {
+    try { if (recorder && recorder.state !== 'inactive') { if (discard) recorder.onstop = null; recorder.stop(); } } catch (e) { /* ignore */ }
+    if (recStream) { try { recStream.getTracks().forEach((t) => t.stop()); } catch (e) { /* ignore */ } }
+    recorder = null; recStream = null;
+  }
+  async function startRecording(key) {
+    if (!navigator.mediaDevices || !window.MediaRecorder) { toast('Recording is not supported in this browser.'); return; }
+    try {
+      recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const type = ['audio/mp4', 'audio/webm', 'audio/ogg'].find((t) => window.MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t));
+      recorder = type ? new MediaRecorder(recStream, { mimeType: type }) : new MediaRecorder(recStream);
+      recChunks = []; recTarget = key;
+      recorder.ondataavailable = (e) => { if (e.data && e.data.size) recChunks.push(e.data); };
+      recorder.onstop = async () => {
+        const blob = new Blob(recChunks, { type: recorder && recorder.mimeType ? recorder.mimeType : (type || 'audio/mp4') });
+        try { await recPut(recTarget, blob); recSet.add(recTarget); toast('Recording saved'); } catch (e) { toast('Could not save the recording.'); }
+        stopRecording(true); refreshCard();
+      };
+      recorder.start();
+      setRecUi(true);
+    } catch (e) { toast('Microphone permission is needed to record.'); stopRecording(true); }
+  }
+  async function playRecording(key) {
+    try {
+      const blob = await recGet(key);
+      if (!blob) { toast('No recording yet'); return; }
+      const url = URL.createObjectURL(blob); const a = new Audio(url);
+      a.onended = () => URL.revokeObjectURL(url); a.play().catch(() => toast('Could not play the recording.'));
+    } catch (e) { toast('Could not play the recording.'); }
+  }
+  function setRecUi(on) {
+    const b = $('#recBtn'); if (!b) return;
+    b.dataset.act = on ? 'rec-stop' : 'rec-start';
+    b.textContent = on ? '⏹ Stop' : '🎙 Record';
+    b.classList.toggle('coral', on);
+  }
+
+  /* ---------- profiles: parent view and child view, with an optional PIN ---------- */
+  function isChild() { return state.role === 'child'; }
+  async function hashPin(pin, salt) {
+    const t = salt + ':' + pin;
+    try {
+      if (window.crypto && crypto.subtle) {
+        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
+        return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+      }
+    } catch (e) { /* fall through */ }
+    let h = 5381; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0;
+    return 'x' + h;
+  }
+  function openPinEntry() {
+    openModal('<button class="btn alt small close" data-act="modal-close">Cancel</button><div class="center"><div class="big-em">👪</div><h2 style="margin-top:0">Grown-ups only</h2><p class="muted">Enter the parent PIN.</p>' +
+      '<input type="password" id="pinIn" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" style="max-width:200px;text-align:center;font-size:28px;letter-spacing:6px">' +
+      '<p><button class="btn" data-act="pin-submit">Open</button></p></div>');
+    setTimeout(() => { const i = $('#pinIn'); if (i) i.focus(); }, 50);
+  }
+  function openPinSet() {
+    openModal('<button class="btn alt small close" data-act="modal-close">Cancel</button><h2 style="margin-top:0">' + (state.pinHash ? 'Change PIN' : 'Set a parent PIN') + '</h2>' +
+      '<p class="small muted">4 to 6 digits. It keeps the parent view closed when you switch to ' + esc(state.nick || 'your child') + '’s view. It is a child lock, not strong security.</p>' +
+      '<label class="f" for="pinNew">New PIN</label><input type="password" id="pinNew" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off">' +
+      '<label class="f" for="pinNew2">Type it again</label><input type="password" id="pinNew2" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off">' +
+      '<p><button class="btn" data-act="pin-save">Save PIN</button></p>');
+  }
+  async function submitPin() {
+    const v = ($('#pinIn') || {}).value || '';
+    const h = await hashPin(v, state.pinSalt || '');
+    if (h === state.pinHash) { state.role = 'parent'; save(); closeModal(); go('today'); render(false); toast('Welcome back'); }
+    else { const i = $('#pinIn'); if (i) { i.value = ''; i.classList.add('shake'); setTimeout(() => i.classList.remove('shake'), 400); } toast('That PIN did not match'); }
+  }
+  async function savePin() {
+    const a = ($('#pinNew') || {}).value || ''; const b = ($('#pinNew2') || {}).value || '';
+    if (!/^\d{4,6}$/.test(a)) { toast('Use 4 to 6 digits'); return; }
+    if (a !== b) { toast('The two PINs do not match'); return; }
+    const salt = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    state.pinSalt = salt; state.pinHash = await hashPin(a, salt); save(); closeModal(); render(true); toast('PIN saved');
+  }
+
+  /* ---------- header ---------- */
+  function updateHeader() {
+    const sc = $('#starCount'); if (sc) sc.textContent = starTotal();
+    const sub = $('#subtitle');
+    if (sub) {
+      const seg = { today: 'Today’s flight plan', words: 'Word time!', play: 'Play time!', feel: 'Feelings time', theme: 'Pick our show!', grow: 'Grow', act: 'Activities', settings: 'Settings' }[route()];
+      const kidSeg = { play: 'Play time!', words: 'Word time!', feel: 'How do you feel?', stars: 'My stickers!' }[route()];
+      if (isChild()) sub.textContent = 'Hi ' + (state.nick || 'friend') + '! ' + (kidSeg || '');
+      else sub.textContent = state.look !== 'classic' ? seg : (state.nick ? state.nick + '’s flight plan' : 'Learn, talk, and grow');
+    }
+    const rb = $('#roleBtn'); const sb = $('#settingsBtn'); const st = $('#starBtn');
+    if (rb) { rb.textContent = isChild() ? '👪' : '👧'; rb.setAttribute('aria-label', isChild() ? 'Grown-ups: open the parent view' : 'Switch to ' + (state.nick || 'child') + '’s view'); }
+    if (sb) sb.hidden = isChild();
+    if (st) st.dataset.to = isChild() ? 'stars' : 'words';
+  }
+
+  /* ---------- TODAY ---------- */
+  const BLOCKS = {
+    feel: { e: '💛', t: 'Feelings check-in', m: 2 },
+    english: { e: '🗣️', t: 'Talk and sound play', m: 5 },
+    lang: { e: '🌍', t: 'Second language', m: 5 },
+    move: { e: '🤸', t: 'Move and play', m: 5 },
+    read: { e: '📚', t: 'Read and sing', m: 5 },
+    math: { e: '🔢', t: 'Number play', m: 4 },
+    art: { e: '🎨', t: 'Make and discover', m: 6 }
+  };
+  const LEVELS = {
+    light: ['feel', 'english', 'lang', 'move'],
+    standard: ['feel', 'english', 'lang', 'move', 'read'],
+    stretch: ['feel', 'english', 'lang', 'move', 'read', 'math', 'art']
+  };
+  function flatEnglish() { const out = []; S.english.forEach((c) => c.words.forEach((w) => out.push(w))); return out; }
+  function findEnglish(word) { const t = String(word).toLowerCase(); return flatEnglish().find((w) => w.w.toLowerCase() === t) || null; }
+  function qLevel() { const a = ageYears(); const i = a == null ? 1 : Math.round((a - 2) * 1.5); return clamp(i, 0, S.questionLadder.length - 1); }
+  function sayBtn(text, label) { return '<button class="btn small alt" data-act="say-en" data-text="' + esc(text) + '">🔊 ' + esc(label || 'Hear') + '</button>'; }
+  function wordRow(lang, w) {
+    const L = LBY[lang]; const x = w[lang]; const rtl = L.dir === 'rtl' ? ' rtl' : '';
+    return '<div class="row between" style="padding:8px 0;border-bottom:1px solid var(--line)">' +
+      '<div style="min-width:0"><span style="font-size:28px">' + w.e + '</span> <b class="' + rtl + '" style="font-size:22px">' + esc(x[0]) + '</b>' +
+      '<div class="muted small">' + esc(w.en) + ' &middot; sounds like ' + esc(x[1]) + (x[2] ? ' &middot; ' + esc(x[2]) : '') + '</div></div>' +
+      '<div class="row"><button class="btn small" data-act="speak" data-lang="' + lang + '" data-id="' + w.id + '">🔊</button>' +
+      '<button class="btn small alt" data-act="open-card" data-lang="' + lang + '" data-id="' + w.id + '">Open</button></div></div>';
+  }
+  function langWordsToday(lang, info) {
+    const th = info.th; const inTheme = (w) => (th.langIds ? th.langIds.indexOf(w.id) >= 0 : w.c === th.langCategory);
+    const order = S.categories.map((c) => c.id);
+    const pool = wordsFor(lang).slice().sort((a, b) => ((inTheme(b) ? 1 : 0) - (inTheme(a) ? 1 : 0)) || (order.indexOf(a.c) - order.indexOf(b.c)));
+    if (!pool.length) return [];
+    const unlearned = pool.filter((w) => !state.learned[lkey(lang, w.id)]);
+    const src = unlearned.length >= 3 ? unlearned : pool;
+    const start = (info.diff * 3) % src.length; const out = [];
+    for (let i = 0; i < 3; i++) out.push(src[(start + i) % src.length]);
+    return out;
+  }
+  function blockBody(id, info) {
+    const wk = info.week;
+    if (id === 'feel') {
+      const cur = state.feelLog[dkey()];
+      const btns = S.feelings.map((f) => '<button class="chip' + (cur === f.id ? ' on' : '') + '" data-act="feel-pick" data-id="' + f.id + '" style="font-size:20px">' + f.e + ' ' + f.name + '</button>').join('');
+      const f = S.feelings.find((x) => x.id === cur);
+      return '<p>Ask: <b>"How is your body feeling today?"</b> Let her point to a face.</p><div class="chips" style="flex-wrap:wrap;overflow:visible">' + btns + '</div>' +
+        (f ? '<div class="say"><b>' + f.name + '</b>: ' + esc(f.body) + '<br>Try: ' + esc(f.do[0]) + '</div>' : '<p class="muted small">Tap one. Naming a feeling is how feelings get smaller.</p>') +
+        '<button class="btn alt small" data-act="go" data-to="feel">Open feelings toolkit</button>';
+    }
+    if (id === 'english') {
+      const word = pick(wk.words, info.diff); const en = findEnglish(word);
+      const q = S.questionLadder[qLevel()]; const sp = pick(S.soundPlay, info.diff);
+      return '<h3 style="margin-top:4px">Word of the day: ' + esc(word) + ' ' + sayBtn(word) + '</h3>' +
+        (en ? '<p class="muted small">Say it in parts: <b>' + esc(en.s) + '</b></p><ol><li>Say: <b>' + esc(en.l[0]) + '</b></li><li>Then: <b>' + esc(en.l[1]) + '</b></li><li>Then: <b>' + esc(en.l[2]) + '</b> ' + sayBtn(en.l[2], 'Hear') + '</li></ol>'
+          : '<p>Say it quiet, say it loud, say it in a silly voice. Then use it in a sentence about today.</p>') +
+        '<div class="say"><b>' + esc(q.level) + ' question:</b> ' + esc(pick(q.q, info.diff)) + '<br><span class="muted small">Wait 5 quiet seconds. Then add one word to what she says.</span></div>' +
+        '<p><b>Sound play: ' + esc(sp.title) + '.</b> ' + esc(sp.how) + ' Try: ' + esc(sp.words.join(', ')) + '.</p>' +
+        '<p><b>Tongue tickler:</b> ' + esc(pick(S.tonguePlay, info.diff)) + ' ' + sayBtn(pick(S.tonguePlay, info.diff), 'Hear') + '</p>' +
+        '<p class="muted small">' + esc(pick(S.englishTips, info.diff)) + '</p>';
+    }
+    if (id === 'lang') {
+      const lang = chosenLang(); const L = LBY[lang]; const ws = langWordsToday(lang, info);
+      const songs = (S.langSongs[lang] || []).slice(0, 1);
+      return '<p><b>' + L.flag + ' ' + esc(L.name) + '</b> today. ' + (state.mode === 'tour' ? 'Tour mode: a new language each day.' : 'Focus mode: one language at a time.') + '</p>' +
+        ws.map((w) => wordRow(lang, w)).join('') +
+        '<div class="say">Say each word 3 times: whisper, normal, big voice. Use your hands or point to the real thing.</div>' +
+        (songs.length ? '<p class="small muted">Song idea: ' + esc(songs[0]) + '</p>' : '') +
+        (lang === 'zu' ? '<p class="small muted">Tip: record a Zulu speaker saying each word, or ask a friend to. Open a card and tap Record.</p>' : '') +
+        '<button class="btn alt small" data-act="go" data-to="words">More words</button>';
+    }
+    if (id === 'move') {
+      return '<div class="say"><b>Move:</b> ' + esc(pick(wk.movement, info.diff)) + '</div><div class="say"><b>Spidey and airplane play:</b> ' + esc(pick(wk.hero, info.diff)) + '</div><p class="muted small">Narrate what she does with real words: "You are climbing UP the big, rough trunk."</p>';
+    }
+    if (id === 'read') {
+      return '<p><b>Book:</b> ' + esc(pick(wk.books, info.diff)) + '</p><p><b>Sing:</b> ' + esc(pick(wk.songs, info.diff)) + '</p><div class="say"><b>After the story, ask:</b> ' + esc(pick(wk.questions, info.diff)) + '</div><p class="muted small">Let her point, turn pages, and finish familiar lines.</p>';
+    }
+    if (id === 'math') {
+      return '<div class="say"><b>Count and sort:</b> ' + esc(pick(wk.math, info.diff)) + '</div><p class="muted small">Touch each thing once as you count. Ask "How many?" and wait.</p>';
+    }
+    if (id === 'art') {
+      const item = info.diff % 2 === 0 ? ['Make', pick(wk.craft, info.diff)] : ['Discover', pick(wk.science, info.diff)];
+      return '<div class="say"><b>' + item[0] + ':</b> ' + esc(item[1]) + '</div><p class="muted small">' + esc(pick(wk.sel, info.diff)) + '</p>';
+    }
+    return '';
+  }
+  function weeklyActiveDays() {
+    let n = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const day = state.done[dkey(d)];
+      if (day && Object.keys(day).some((k) => day[k])) n++;
+    }
+    return n;
+  }
+  function stampLevel(lang) {
+    const total = wordsFor(lang).length; const n = learnedCount(lang);
+    if (n >= total && total) return ['🥇', 'Gold'];
+    if (n >= 30) return ['🥈', 'Silver'];
+    if (n >= 10) return ['🥉', 'Bronze'];
+    return ['✈️', 'Boarding'];
+  }
+  function viewToday() {
+    const info = themeInfo(); const ids = LEVELS[state.level] || LEVELS.standard;
+    const today = state.done[dkey()] || {};
+    const doneN = ids.filter((b) => today[b]).length; const total = ids.length;
+    const mins = ids.reduce((a, b) => a + BLOCKS[b].m, 0);
+    const hr = new Date().getHours(); const greet = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
+    const dateStr = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    let h = '<div class="card hero"><div class="row between"><div><b style="font-size:22px">' + greet + (state.nick ? ', ' + esc(state.nick) : '') + '!</b><div class="muted">' + esc(dateStr) + '</div></div>' +
+      '<span class="pill green">' + info.th.emoji + ' Week ' + (info.n + 1) + ' of ' + info.th.weeks.length + (info.over ? ' (done!)' : '') + '</span></div>' +
+      '<p style="margin:10px 0 2px"><b>' + esc(info.week.title) + '</b><br><span class="muted">' + esc(info.week.focus) + '</span></p>' +
+      '<div class="runway"><div class="line"></div><div class="plane" style="left:' + (total ? (8 + (doneN / total) * 84) : 8) + '%">✈️</div></div>' +
+      '<div class="row between small"><span>' + doneN + ' of ' + total + ' stops done &middot; about ' + mins + ' min</span><span>' + weeklyActiveDays() + ' of 7 days active</span></div></div>';
+    if (state.unit && !S.themes.some((t) => t.id === state.unit)) { const un = S.units.find((x) => x.id === state.unit); if (un) h += '<div class="card note">Today’s show is <b>' + un.emoji + ' ' + esc(un.name) + '</b>. The Play tab uses its words. This daily plan still follows Trees until a plan for ' + esc(un.name) + ' is added.</div>'; }
+    if (info.over) h += '<div class="card note">The 6 ' + esc(info.th.name.toLowerCase()) + ' weeks are complete. You can repeat week 6, or ask her teacher for the next theme. See the Theme tab.</div>';
+    if (info.pre) h += '<div class="card note">Your theme starts on ' + esc(startFor(info.th.id)) + '. This is a preview of week 1.</div>';
+    h += S.parent.moveCard(ctx, info.diff);
+    ids.forEach((b) => {
+      const m = BLOCKS[b]; const isDone = !!today[b]; const id = 'blk-' + b;
+      h += '<details class="block' + (isDone ? ' done' : '') + '" data-id="' + id + '"' + (ui.openDetails[id] ? ' open' : '') + '><summary><span class="b-emoji">' + m.e + '</span><div><div class="b-title">' + m.t + '</div><div class="b-min">' + m.m + ' min</div></div>' +
+        '<button class="check" data-act="toggle-block" data-b="' + b + '" aria-label="Mark ' + m.t + ' done" aria-pressed="' + isDone + '">' + (isDone ? '✓' : '') + '</button></summary><div class="b-body">' + blockBody(b, info) + '</div></details>';
+    });
+    if (doneN === total && total) h += '<div class="card good center"><div style="font-size:40px">🎉</div><b>Landed! All stops done today.</b><p class="muted small">Big hug. Then free play, no agenda.</p></div>';
+    h += '<h2>Language passport</h2><div class="grid wide">' + S.langs.map((l) => {
+      const n = learnedCount(l.id); const t = wordsFor(l.id).length; const lv = stampLevel(l.id);
+      return '<button class="stamp ' + (n >= 10 ? 'got' : '') + '" style="font:inherit;color:inherit;text-align:left;cursor:pointer" data-act="wlang" data-lang="' + l.id + '"><span class="fl">' + l.flag + '</span><div style="flex:1"><b>' + l.name + '</b><div class="progress"><i style="width:' + (t ? Math.round(n / t * 100) : 0) + '%"></i></div><span class="small muted">' + n + ' of ' + t + ' learned</span></div><span class="lv" title="' + lv[1] + '">' + lv[0] + '</span></button>';
+    }).join('') + '</div><p class="small muted">Tap "Learned" on a word card when she knows it. Bronze at 10 words, silver at 30, gold at all.</p>';
+    return h;
+  }
+
+  /* ---------- WORDS ---------- */
+  function viewWords() {
+    if (!ui.wlang) ui.wlang = chosenLang();
+    const lang = ui.wlang;
+    let h = '<h2>Words</h2><div class="chips">' +
+      '<button class="chip" aria-pressed="' + (lang === 'en') + '" data-act="wlang" data-lang="en">🇺🇸 English</button>' +
+      S.langs.map((l) => '<button class="chip" aria-pressed="' + (lang === l.id) + '" data-act="wlang" data-lang="' + l.id + '">' + l.flag + ' ' + l.name + '</button>').join('') + '</div>';
+    if (lang === 'en') return h + viewEnglish();
+    const L = LBY[lang];
+    h += '<div class="card"><div class="row between"><div><b>' + L.flag + ' ' + esc(L.name) + '</b> <span class="muted">' + esc(L.native) + '</span></div>' +
+      '<div class="row"><button class="btn small sun" data-act="quiz-start">🎯 Quiz</button><button class="btn small alt" data-act="songs">🎵 Songs</button></div></div>' +
+      (isChild() ? '' : '<p class="small muted">' + esc(S.langNotes[lang]) + '</p>') +
+      (!hasVoice(L.tts) ? '<p class="small"><b>Voice:</b> this device has no ' + esc(L.name) + ' voice' + (lang === 'zu' ? '. Use Record on each card.' : ' yet, or the voice list has not loaded. Open Settings and tap Test voice.') + '</p>' : '') +
+      '<p class="small muted">Learned: ' + learnedCount(lang) + ' of ' + wordsFor(lang).length + '</p></div>';
+    h += '<div class="chips"><button class="chip" aria-pressed="' + (ui.wcat === 'all') + '" data-act="wcat" data-cat="all">All</button>' +
+      S.categories.map((c) => '<button class="chip" aria-pressed="' + (ui.wcat === c.id) + '" data-act="wcat" data-cat="' + c.id + '">' + c.emoji + ' ' + c.name + '</button>').join('') + '</div>';
+    const list = wordsFor(lang).filter((w) => ui.wcat === 'all' || w.c === ui.wcat);
+    ui.cardList = list.map((w) => ({ lang, id: w.id }));
+    h += '<div class="grid">' + list.map((w) => {
+      const x = w[lang]; const k = lkey(lang, w.id); const rtl = L.dir === 'rtl' ? ' rtl' : '';
+      return '<button class="wc' + (state.learned[k] ? ' learned' : '') + '" data-act="open-card" data-lang="' + lang + '" data-id="' + w.id + '">' +
+        (recSet.has(k) ? '<span class="badge" title="Has a recording">🎙</span>' : '') + (state.learned[k] ? '<span class="badge" style="left:10px;right:auto">✅</span>' : '') +
+        '<span class="em">' + w.e + '</span><span class="w' + rtl + '">' + esc(x[0]) + '</span><span class="p">' + esc(x[1]) + '</span><span class="en">' + esc(w.en) + '</span></button>';
+    }).join('') + '</div>';
+    return h;
+  }
+  function viewEnglish() {
+    let h = '<p class="muted">Clear talking and a growing vocabulary. Tap a word to see how to say it, then build it into a sentence.</p>';
+    S.english.forEach((c, ci) => {
+      h += '<details class="acc"' + (ci === 0 ? ' open' : '') + '><summary>' + esc(c.cat) + '</summary><div class="acc-body"><div class="grid">' +
+        c.words.map((w, wi) => '<button class="wc" data-act="open-en" data-c="' + ci + '" data-w="' + wi + '"><span class="em">' + w.e + '</span><span class="w">' + esc(w.w) + '</span><span class="p">' + esc(w.s) + '</span></button>').join('') +
+        '</div></div></details>';
+    });
+    h += '<details class="acc"><summary>🎤 Sound play (clear speech)</summary><div class="acc-body"><p class="small muted">Sounds come in at different times. Some, like r, l, th, and s-blends, are often tricky until age 5 or later. That is normal.</p>' +
+      S.soundPlay.map((s) => '<div class="say"><b>' + esc(s.title) + '</b><br>' + esc(s.how) + '<br><span class="muted small">Words: ' + esc(s.words.join(', ')) + '</span></div>').join('') + '</div></details>';
+    h += '<details class="acc"><summary>😄 Tongue ticklers</summary><div class="acc-body">' + S.tonguePlay.map((t) => '<p>' + esc(t) + ' ' + sayBtn(t) + '</p>').join('') + '</div></details>';
+    if (!isChild()) h += '<details class="acc"><summary>❓ Question ladder</summary><div class="acc-body"><p class="small muted">Start at the first level. Move up when she answers easily.</p>' +
+      S.questionLadder.map((q, i) => '<div class="say"><b>' + (i + 1) + '. ' + esc(q.level) + '</b><br>' + q.q.map(esc).join('<br>') + '</div>').join('') + '</div></details>';
+    if (!isChild()) h += '<details class="acc"><summary>💡 Tips for talking</summary><div class="acc-body"><ul>' + S.englishTips.map((t) => '<li>' + esc(t) + '</li>').join('') + '</ul></div></details>';
+    h += '<details class="acc"><summary>🎵 Songs to sing</summary><div class="acc-body"><ul>' + S.englishSongs.map((t) => '<li>' + esc(t) + '</li>').join('') + '</ul></div></details>';
+    return h;
+  }
+  function openEnglish(ci, wi) {
+    const w = S.english[ci].words[wi];
+    openModal('<button class="btn alt small close" data-act="modal-close">Close</button><div class="center"><div class="big-em">' + w.e + '</div><div class="big-word">' + esc(w.w) + '</div><div class="pill">' + esc(w.s) + '</div>' +
+      '<p>' + sayBtn(w.w, 'Hear it') + ' <button class="btn small alt" data-act="say-en" data-text="' + esc(w.w) + '" data-slow="1">🐢 Slow</button></p></div>' +
+      '<h3>Build it up</h3><ol>' + w.l.map((x) => '<li style="margin:8px 0"><b>' + esc(x) + '</b> ' + sayBtn(x) + '</li>').join('') + '</ol>' +
+      '<p class="muted small">Say it with her. If she says only the first part, great: you say the next step and let her echo.</p>');
+  }
+  function cardHtml(lang, id) {
+    const w = WBY[id]; const L = LBY[lang]; const x = w[lang]; const k = lkey(lang, id); const rtl = L.dir === 'rtl' ? ' rtl' : '';
+    const hasRec = recSet.has(k);
+    return '<button class="btn alt small close" data-act="modal-close">Close</button><div class="center">' +
+      '<div class="big-em">' + w.e + '</div><div class="muted">' + esc(w.en) + '</div><div class="big-word' + rtl + '">' + esc(x[0]) + '</div>' +
+      (x[2] ? '<div>' + esc(x[2]) + '</div>' : '') + '<p><span class="pill">Sounds like: ' + esc(x[1]) + '</span></p>' +
+      '<div class="row" style="justify-content:center"><button class="btn" data-act="speak" data-lang="' + lang + '" data-id="' + id + '">🔊 Hear</button>' +
+      '<button class="btn alt" data-act="speak" data-lang="' + lang + '" data-id="' + id + '" data-slow="1">🐢 Slow</button>' +
+      (hasRec ? '<button class="btn sun" data-act="rec-play" data-key="' + esc(k) + '">▶️ Recording</button>' : '') + '</div>' +
+      (hasVoice(L.tts) ? '' : '<p class="small muted">No ' + esc(L.name) + ' voice on this device. Record a native speaker below.</p>') +
+      '<div class="row" style="justify-content:center;margin-top:10px"><button class="btn alt small" id="recBtn" data-act="rec-start" data-key="' + esc(k) + '">🎙 Record</button>' +
+      (hasRec ? '<button class="btn alt small" data-act="rec-del" data-key="' + esc(k) + '">Delete recording</button>' : '') + '</div>' +
+      '<div class="row" style="justify-content:center;margin-top:14px"><button class="btn ' + (state.said[k] ? '' : 'alt') + '" data-act="card-said">⭐ ' + (state.said[k] ? 'She said it!' : 'She said it') + '</button>' +
+      '<button class="btn ' + (state.learned[k] ? '' : 'alt') + '" data-act="card-learned">✅ ' + (state.learned[k] ? 'Learned' : 'Mark learned') + '</button></div>' +
+      '<div class="row between" style="margin-top:16px"><button class="btn alt small" data-act="card-nav" data-dir="-1">◀ Back</button><span class="muted small">' + (ui.cardIdx + 1) + ' of ' + ui.cardList.length + '</span><button class="btn alt small" data-act="card-nav" data-dir="1">Next ▶</button></div></div>';
+  }
+  function openCard(lang, id) {
+    if (!ui.cardList.length || !ui.cardList.some((c) => c.lang === lang && c.id === id)) {
+      ui.cardList = wordsFor(lang).map((w) => ({ lang, id: w.id }));
+    }
+    ui.cardIdx = ui.cardList.findIndex((c) => c.lang === lang && c.id === id);
+    openModal(cardHtml(lang, id));
+  }
+  function refreshCard() {
+    const c = ui.cardList[ui.cardIdx]; if (!c || $('#modal').hidden) return;
+    const top = $('#modalCard').scrollTop; $('#modalCard').innerHTML = cardHtml(c.lang, c.id); $('#modalCard').scrollTop = top;
+  }
+
+  /* ---------- quiz ---------- */
+  let quiz = null;
+  function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function startQuiz() {
+    const lang = ui.wlang; const pool = wordsFor(lang).filter((w) => ui.wcat === 'all' || w.c === ui.wcat);
+    if (pool.length < 3) { toast('Pick a bigger group of words for a quiz.'); return; }
+    quiz = { lang, pool: shuffle(pool).slice(0, 5), i: 0, score: 0, all: wordsFor(lang), locked: false };
+    renderQuiz();
+  }
+  function renderQuiz() {
+    const q = quiz; if (!q) return;
+    if (q.i >= q.pool.length) {
+      openModal('<div class="center"><div class="big-em">🎉</div><h2>' + q.score + ' of ' + q.pool.length + '!</h2><p>Every right answer earned a star.</p><button class="btn" data-act="quiz-start">Play again</button> <button class="btn alt" data-act="modal-close">Done</button></div>');
+      return;
+    }
+    const t = q.pool[q.i]; const L = LBY[q.lang]; const rtl = L.dir === 'rtl' ? ' rtl' : '';
+    const others = shuffle(q.all.filter((w) => w.id !== t.id && w.e !== t.e)).slice(0, 2);
+    q.opts = shuffle([t].concat(others)); q.target = t; q.locked = false;
+    openModal('<button class="btn alt small close" data-act="modal-close">Close</button><div class="center"><p class="muted">Question ' + (q.i + 1) + ' of ' + q.pool.length + '</p>' +
+      '<p>Which one is</p><div class="big-word' + rtl + '">' + esc(t[q.lang][0]) + '</div><p><button class="btn" data-act="quiz-hear">🔊 Hear</button></p>' +
+      '<div class="row" style="justify-content:center;gap:14px;margin-top:10px">' + q.opts.map((o, i) => '<button class="opt" data-act="quiz-pick" data-i="' + i + '" aria-label="' + esc(o.en) + '">' + o.e + '</button>').join('') + '</div></div>');
+    speak(t[q.lang][0], L.tts);
+  }
+
+  /* ---------- FEELINGS ---------- */
+  let breathTimer = null;
+  function stopBreath() { if (breathTimer) { clearTimeout(breathTimer); breathTimer = null; } }
+  function startBreath() {
+    stopBreath();
+    const root = $('#modal').hidden ? document : $('#modalCard');
+    const plane = $('#bplane', root); const cnt = $('#bcount', root); if (!plane || !cnt) return;
+    const seq = [];
+    for (let c = 0; c < 3; c++) { [1, 2, 3].forEach((n) => seq.push(['in', n])); [1, 2, 3, 4].forEach((n) => seq.push(['out', n])); }
+    let i = 0;
+    (function step() {
+      if (i >= seq.length) { cnt.textContent = 'Great flying! 🌟'; plane.className = 'plane'; breathTimer = null; return; }
+      const s = seq[i++];
+      cnt.textContent = (s[0] === 'in' ? 'Breathe in ' : 'Breathe out ') + s[1];
+      plane.className = 'plane ' + (s[0] === 'in' ? 'up' : 'down');
+      breathTimer = setTimeout(step, 1000);
+    })();
+  }
+  function recentFeelings() {
+    const out = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const f = S.feelings.find((x) => x.id === state.feelLog[dkey(d)]);
+      out.push('<div class="center" style="min-width:44px"><div style="font-size:28px">' + (f ? f.e : '·') + '</div><div class="small muted">' + ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][d.getDay()] + '</div></div>');
+    }
+    return '<div class="row" style="justify-content:space-between">' + out.join('') + '</div>';
+  }
+  function viewFeel() {
+    let h = '<h2>Feelings toolkit</h2><p class="muted">Name it, breathe, then solve it. CDC parent tips for age 3 include giving her words for her feelings and teaching her to take deep breaths, hug a favorite toy, or go to a quiet, safe place.</p>';
+    h += '<div class="grid g3">' + S.feelings.map((f) => '<button class="feel-card" style="background:' + f.color + '33" data-act="feel-open" data-id="' + f.id + '"><span class="em">' + f.e + '</span>' + f.name + '</button>').join('') + '</div>';
+    h += '<div class="card"><b>This week</b>' + recentFeelings() + '</div>';
+    h += '<h2>✈️ Airplane breathing</h2><div class="card breath"><div class="plane" id="bplane">✈️</div><div class="count" id="bcount">Ready for takeoff?</div><button class="btn" data-act="breath-start">Start 3 flights</button></div>';
+    h += '<h2>Calm-down tools</h2>' + S.calmTools.map((t) => '<div class="card"><b>' + esc(t.name) + '</b><p>' + esc(t.text) + '</p></div>').join('');
+    h += '<h2>When it gets hard</h2>' + S.scripts.map((s) => '<details class="acc"><summary>' + esc(s.title) + '</summary><div class="acc-body"><ol>' + s.steps.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ol></div></details>').join('');
+    h += '<h2>Friend skills by age</h2>' + S.friendLadder.map((f) => '<details class="acc"><summary>Age ' + esc(f.age) + '</summary><div class="acc-body"><ul>' + f.skills.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div></details>').join('');
+    return h;
+  }
+  function viewKidFeel() {
+    let h = '<h2>How do you feel?</h2><p class="muted">Tap a face.</p>';
+    h += '<div class="grid g3">' + S.feelings.map((f) => '<button class="feel-card" style="background:' + f.color + '33" data-act="feel-open" data-id="' + f.id + '"><span class="em">' + f.e + '</span>' + f.name + '</button>').join('') + '</div>';
+    h += '<div class="card"><b>This week</b>' + recentFeelings() + '</div>';
+    h += '<h2>✈️ Airplane breathing</h2><div class="card breath"><div class="plane" id="bplane">✈️</div><div class="count" id="bcount">Ready for takeoff?</div><button class="btn" data-act="breath-start">Start 3 flights</button></div>';
+    return h;
+  }
+  function viewStars() { return '<h2>My stickers</h2>' + S.fun.p_stick(ctx); }
+  function openFeeling(id) {
+    const f = S.feelings.find((x) => x.id === id); if (!f) return;
+    const words = f.words.length ? S.words.filter((w) => f.words.indexOf(w.id) >= 0) : [];
+    let tr = '';
+    if (words.length) {
+      tr = '<h3>In other languages</h3><div class="scroll-x"><table class="tbl">' + S.langs.map((l) => { const x = words[0][l.id]; return x ? '<tr><td>' + l.flag + ' ' + l.name + '</td><td class="' + (l.dir === 'rtl' ? 'rtl' : '') + '"><b>' + esc(x[0]) + '</b></td><td class="muted small">' + esc(x[1]) + '</td><td><button class="btn small alt" data-act="speak" data-lang="' + l.id + '" data-id="' + words[0].id + '">🔊</button></td></tr>' : ''; }).join('') + '</table></div>';
+    }
+    openModal('<button class="btn alt small close" data-act="modal-close">Close</button><div class="center"><div class="big-em">' + f.e + '</div><div class="big-word">' + f.name + '</div></div>' +
+      '<p><b>My body feels:</b> ' + esc(f.body) + '</p><h3>What can I do?</h3><ul>' + f.do.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>' + tr +
+      '<div class="row" style="margin-top:14px"><button class="btn" data-act="feel-log" data-id="' + f.id + '">I feel this today</button><button class="btn alt" data-act="breath-modal">✈️ Breathe</button></div>');
+  }
+
+  /* ---------- THEME ---------- */
+  function viewTheme() {
+    const chips = '<h2>Pick our show</h2>' + S.fun.unitChips(ctx);
+    if (!S.themes.some((t) => t.id === state.unit)) return chips + S.fun.unitPage(ctx);
+    return chips + viewPlan();
+  }
+  function viewPlan() {
+    const info = themeInfo(); const th = info.th;
+    if (ui.tweek == null) ui.tweek = info.n;
+    const wk = th.weeks[ui.tweek]; const start = parseKey(startFor(th.id));
+    const ws = new Date(start); ws.setDate(ws.getDate() + ui.tweek * 7);
+    const we = new Date(ws); we.setDate(we.getDate() + 6);
+    const fmt = (d) => MONTHS[d.getMonth()] + ' ' + d.getDate();
+    const lang = chosenLang(); const L = LBY[lang];
+    let h = '<h2>' + th.emoji + ' ' + esc(th.name) + ' theme</h2><p class="muted">Matched to what her class is doing for the next 6 weeks. If her teacher shifts the plan, change the start date in Settings.</p>';
+    h += '<div class="chips">' + th.weeks.map((w, i) => '<button class="chip" aria-pressed="' + (ui.tweek === i) + '" data-act="tweek" data-n="' + i + '">Week ' + (i + 1) + (i === info.n ? ' (now)' : '') + '</button>').join('') + '</div>';
+    h += '<div class="card hero"><b style="font-size:20px">' + esc(wk.title) + '</b><div class="muted small">' + fmt(ws) + ' to ' + fmt(we) + '</div><p>' + esc(wk.focus) + '</p></div>';
+    h += '<div class="card"><b>Words to learn this week</b><div class="chips" style="flex-wrap:wrap;overflow:visible">' + wk.words.map((w) => '<button class="chip" data-act="say-en" data-text="' + esc(w) + '">🔊 ' + esc(w) + '</button>').join('') + '</div></div>';
+    const inTheme = (w) => (th.langIds ? th.langIds.indexOf(w.id) >= 0 : w.c === th.langCategory);
+    const tw = wordsFor(lang).filter(inTheme);
+    h += '<details class="acc" open><summary>' + L.flag + ' ' + esc(th.langLabel || (th.name + ' words')) + ' in ' + esc(L.name) + '</summary><div class="acc-body">' + tw.map((w) => wordRow(lang, w)).join('') + '<p class="small muted">Change the language in Settings, or compare all six below.</p></div></details>';
+    const all = S.words.filter(inTheme);
+    h += '<details class="acc"><summary>🌍 All six languages side by side</summary><div class="acc-body scroll-x"><table class="tbl"><tr><th></th>' + all.map((w) => '<th>' + w.e + ' ' + w.en + '</th>').join('') + '</tr>' +
+      S.langs.map((l) => '<tr><td><b>' + l.flag + '</b></td>' + all.map((w) => '<td class="' + (l.dir === 'rtl' ? 'rtl' : '') + '">' + (w[l.id] ? '<button class="cell" data-act="open-card" data-lang="' + l.id + '" data-id="' + w.id + '">' + esc(w[l.id][0]) + '</button>' : '<span class="muted">n/a</span>') + '</td>').join('') + '</tr>').join('') + '</table></div></details>';
+    const sec = (t, arr, open) => '<details class="acc"' + (open ? ' open' : '') + '><summary>' + t + '</summary><div class="acc-body"><ul>' + arr.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div></details>';
+    h += sec('📚 Books', wk.books, true) + sec('🎵 Songs', wk.songs) + sec('🤸 Move', wk.movement) + sec('🕷️ Spidey and airplane play', wk.hero) + sec('🎨 Make', wk.craft) + sec('🔬 Discover', wk.science) +
+      sec('🔢 Count and sort', wk.math) + sec('💛 Feelings and friends', wk.sel) + sec('❓ Questions to ask', wk.questions);
+    h += '<div class="card note"><b>Talk to her teacher:</b> ' + esc(wk.teacherAsk) + '</div>';
+    h += '<div class="card warn small">' + esc(th.safety) + '</div>';
+    h += S.fun.customWords(ctx);
+    return h;
+  }
+
+  /* ---------- GROW ---------- */
+  function viewGrow() {
+    let h = '<h2>Grow</h2><div class="chips">' + [['miles', '✅ Milestones'], ['guide', '🌱 Parent guide'], ['log', '📈 Daily log'], ['map', '🗺️ Growth map to 10'], ['goals', '🎓 Big goals']].map((t) =>
+      '<button class="chip" aria-pressed="' + (ui.gtab === t[0]) + '" data-act="gtab" data-t="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>';
+    if (ui.gtab === 'miles') return h + growMilestones();
+    if (ui.gtab === 'guide') return h + S.parent.viewGuide(ctx);
+    if (ui.gtab === 'log') return h + S.fun.viewLog(ctx);
+    if (ui.gtab === 'map') return h + growMap();
+    return h + growGoals();
+  }
+  function growMilestones() {
+    if (!ui.mband) ui.mband = defaultMilestoneBand();
+    const band = S.milestones.find((m) => m.id === ui.mband);
+    const done = band.items.filter((i) => state.milestones[i.id]).length;
+    let h = '<div class="chips">' + S.milestones.map((m) => '<button class="chip" aria-pressed="' + (ui.mband === m.id) + '" data-act="mband" data-id="' + m.id + '">' + m.label + '</button>').join('') + '</div>';
+    h += '<div class="card"><div class="row between"><b>' + done + ' of ' + band.items.length + ' checked</b><a href="' + band.url + '" target="_blank" rel="noopener">CDC list</a></div><div class="progress"><i style="width:' + Math.round(done / band.items.length * 100) + '%"></i></div>' +
+      '<p class="small muted">These are skills most children (75% or more) show by this age. Check one when you have seen her do it, not as a test. Source: ' + esc(band.source) + '.</p></div>';
+    const cats = []; band.items.forEach((i) => { if (cats.indexOf(i.cat) < 0) cats.push(i.cat); });
+    cats.forEach((c) => {
+      h += '<h3>' + esc(c) + '</h3><div class="card">' + band.items.filter((i) => i.cat === c).map((i) =>
+        '<label class="ck"><input type="checkbox" data-ms="' + i.id + '"' + (state.milestones[i.id] ? ' checked' : '') + '><span>' + esc(i.t) + '</span></label>').join('') + '</div>';
+    });
+    h += '<div class="card warn"><b>When to act</b><p>' + esc(S.actEarly) + '</p></div>';
+    return h;
+  }
+  function growMap() {
+    const cur = growthBand();
+    let h = '<p class="muted">What to build at each stage. Ages 2 to 5 follow the CDC lists. Ages 6 to 10 describe typical elementary goals. Second-language targets are my suggestions, not norms.</p>';
+    S.growth.forEach((g) => {
+      h += '<details class="acc"' + (g.id === cur.id ? ' open' : '') + '><summary>' + esc(g.range) + ' &middot; ' + esc(g.grade) + (g.id === cur.id ? ' <span class="pill green">Now</span>' : '') + '</summary><div class="acc-body"><table class="tbl">' +
+        Object.keys(g.areas).map((a) => '<tr><td style="width:34%"><b>' + esc(a) + '</b></td><td>' + esc(g.areas[a]) + '</td></tr>').join('') + '</table></div></details>';
+    });
+    return h;
+  }
+  function growGoals() {
+    const B = S.bigGoals; const li = (a) => '<ul>' + a.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>';
+    let h = '<div class="card hero"><b style="font-size:20px">Early graduation and a full scholarship</b><p>' + esc(B.intro) + '</p></div>';
+    h += '<details class="acc" open><summary>The honest picture on a free ride</summary><div class="acc-body">' + li(B.freeRide) + '</div></details>';
+    h += '<details class="acc"><summary>Routes that can get close to free</summary><div class="acc-body">' + B.routes.map((r) => '<div class="say"><b>' + esc(r.t) + '</b><br>' + esc(r.d) + '</div>').join('') + '</div></details>';
+    h += '<details class="acc"><summary>Early graduation and college credit</summary><div class="acc-body">' + li(B.early) + '</div></details>';
+    h += '<details class="acc"><summary>What to build between now and 10</summary><div class="acc-body">' + li(B.habits) + '</div></details>';
+    h += '<details class="acc"><summary>Timeline</summary><div class="acc-body">' + B.timeline.map((t) => '<div class="say"><b>' + esc(t.when) + '</b><br>' + esc(t.what) + '</div>').join('') + '</div></details>';
+    h += '<details class="acc"><summary>Sources</summary><div class="acc-body"><ul>' + B.sources.map((s) => '<li><a href="' + esc(s.u) + '" target="_blank" rel="noopener">' + esc(s.t) + '</a></li>').join('') + '</ul><p class="small muted">Checked October 29, 2026. Rules and amounts change, so confirm with each school and the state. This is information, not legal or financial advice.</p></div></details>';
+    return h;
+  }
+
+  /* ---------- ACTIVITIES ---------- */
+  const STATUS = { active: ['Active now', 'green'], next: ['Next up', 'sun'], planned: ['Planned', ''], paused: ['Paused', 'coral'], done: ['Finished', ''] };
+  function whenText(a) {
+    if (!a.when) return '';
+    if (a.when === 'age4') {
+      if (state.birth) { const p = state.birth.split('-').map(Number); return 'Turns 4 in ' + MONTHS[p[1] - 1] + ' ' + (p[0] + 4); }
+      return 'When she turns 4';
+    }
+    const m = /^(\d{4})-(\d{2})$/.exec(a.when);
+    if (m) return MONTHS[Number(m[2]) - 1] + ' ' + m[1];
+    return a.when;
+  }
+  function goalTile(type, label) {
+    const items = state.activities.filter((a) => a.type === type);
+    const act = items.filter((a) => a.status === 'active');
+    const soon = items.filter((a) => a.status === 'next' || a.status === 'planned');
+    if (act.length) return '<div class="card good"><b>✅ ' + label + '</b><div>' + act.map((a) => esc(a.name)).join(', ') + '</div></div>';
+    if (soon.length) return '<div class="card note"><b>⏳ ' + label + '</b><div>Coming: ' + soon.map((a) => esc(a.name) + (whenText(a) ? ' (' + esc(whenText(a)) + ')' : '')).join(', ') + '</div></div>';
+    return '<div class="card warn"><b>➕ ' + label + '</b><div>Nothing active. Pick one below.</div></div>';
+  }
+  function viewAct() {
+    let h = '<h2>Activities</h2><p class="muted">Goal: one sport and one art at all times. There is no limit on how many she can try.</p>';
+    h += '<div class="grid wide">' + goalTile('sport', 'Sport') + goalTile('art', 'Art') + '</div>';
+    const order = ['active', 'next', 'planned', 'paused', 'done'];
+    const list = state.activities.slice().sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status));
+    h += '<div class="row between"><h2 style="margin:6px 0">Her list</h2><button class="btn" data-act="act-open" data-id="">＋ Add</button></div>';
+    h += list.map((a) => '<div class="card"><div class="row between"><div><b style="font-size:19px">' + (a.type === 'sport' ? '🏅' : a.type === 'art' ? '🎭' : '⭐') + ' ' + esc(a.name) + '</b> <span class="pill ' + STATUS[a.status][1] + '">' + STATUS[a.status][0] + '</span>' +
+      (whenText(a) ? '<div class="muted small">' + esc(whenText(a)) + '</div>' : '') + '</div><button class="btn alt small" data-act="act-open" data-id="' + esc(a.id) + '">Edit</button></div>' +
+      (a.note ? '<p class="small">' + esc(a.note) + '</p>' : '') + (a.lang ? '<p class="small muted">🌍 ' + esc(a.lang) + '</p>' : '') + '</div>').join('');
+    h += '<h2>Ideas</h2>' + S.activityIdeas.map((x, i) => '<div class="card"><div class="row between"><div><b>' + esc(x.name) + '</b> <span class="pill">' + esc(x.type) + '</span><div class="small muted">' + esc(x.why) + '</div></div><button class="btn alt small" data-act="act-idea" data-i="' + i + '">Add</button></div></div>').join('');
+    h += '<div class="card note small"><b>Safety notes.</b> Ask every program about its minimum age, coach-to-child ratio, and safety rules. For riding, use a certified riding helmet (ASTM/SEI) and ask the stable how they match horses and lessons to small children. For water, an adult stays within arm’s reach.</div>';
+    return h;
+  }
+  function openActivity(id) {
+    const a = id ? state.activities.find((x) => x.id === id) : { id: '', name: '', type: 'sport', status: 'planned', when: '', note: '', lang: '' };
+    if (!a) return;
+    const opt = (v, cur, t) => '<option value="' + v + '"' + (v === cur ? ' selected' : '') + '>' + t + '</option>';
+    openModal('<button class="btn alt small close" data-act="modal-close">Close</button><h2 style="margin-top:0">' + (id ? 'Edit activity' : 'Add activity') + '</h2>' +
+      '<input type="hidden" id="aid" value="' + esc(a.id) + '">' +
+      '<label class="f" for="aname">Name</label><input type="text" id="aname" value="' + esc(a.name) + '">' +
+      '<label class="f" for="atype">Type</label><select id="atype">' + opt('sport', a.type, 'Sport') + opt('art', a.type, 'Art') + opt('other', a.type, 'Other') + '</select>' +
+      '<label class="f" for="astatus">Status</label><select id="astatus">' + Object.keys(STATUS).map((k) => opt(k, a.status, STATUS[k][0])).join('') + '</select>' +
+      '<label class="f" for="awhen">When (for example 2027-01, or "age4", or a note)</label><input type="text" id="awhen" value="' + esc(a.when) + '">' +
+      '<label class="f" for="anote">Notes</label><textarea id="anote">' + esc(a.note) + '</textarea>' +
+      '<div class="row" style="margin-top:14px"><button class="btn" data-act="act-save">Save</button>' + (id ? '<button class="btn coral" data-act="act-del" data-id="' + esc(a.id) + '">Delete</button>' : '') + '</div>');
+  }
+
+  /* ---------- SETTINGS ---------- */
+  function viewSettings() {
+    const sel = (k, opts) => '<select data-set="' + k + '">' + opts.map((o) => '<option value="' + o[0] + '"' + (String(state[k]) === String(o[0]) ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>';
+    const standalone = window.navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+    let h = '<h2>Settings</h2>';
+    h += '<div class="card"><b>About your child</b><p class="small muted">Stays on this device only. Used to show the right age stage.</p>' +
+      '<label class="f" for="s-nick">Nickname (optional)</label><input type="text" id="s-nick" data-set="nick" value="' + esc(state.nick) + '" maxlength="30" autocomplete="off">' +
+      '<label class="f" for="s-birth">Birth month and year</label><input type="month" id="s-birth" data-set="birth" value="' + esc(state.birth) + '"></div>';
+    h += '<div class="card"><b>Learning plan</b>' +
+      '<label class="f">Daily time</label>' + sel('level', [['light', 'Light, about 17 min'], ['standard', 'Standard, about 22 min'], ['stretch', 'Stretch, about 32 min']]) +
+      '<p class="small muted">Short, playful sessions work best at this age, with conversation all day long. The CDC lists attention for 5 to 10 minutes as a milestone at age 5.</p>' +
+      '<label class="f">Second-language mode</label>' + sel('mode', [['focus', 'Focus: one language at a time (recommended)'], ['tour', 'Tour: a new language each day']]) +
+      '<label class="f">Focus language</label>' + sel('focusLang', S.langs.map((l) => [l.id, l.flag + ' ' + l.name])) +
+      '<p class="small muted">Tip: switch the focus language each month, or keep one going for longer. Real conversation with native speakers helps most.</p>' +
+      '<label class="f" for="s-theme">' + esc(planTheme().name) + ' start date</label><input type="date" id="s-theme" data-set="themeStart" value="' + esc(startFor(planTheme().id)) + '">' +
+      '<label class="f">Voice speed</label>' + sel('rate', [[0.6, 'Slow'], [0.8, 'Gentle (default)'], [1, 'Normal']]) +
+      '<p><button class="btn alt small" data-act="test-voice">🔊 Test voice</button></p></div>';
+    h += '<div class="card"><b>Profiles</b><p class="small muted">Two views on this device: the parent view (everything) and ' + esc(state.nick || 'your child') + '’s view (Play, Words, Feelings, Stickers). A PIN keeps the parent view closed when you switch to the child view. It is a child lock, not strong security, and both views share the same saved progress on this device.</p>' +
+      '<p>Parent PIN: <b>' + (state.pinHash ? 'set' : 'not set') + '</b></p><div class="row"><button class="btn small" data-act="pin-set-open">' + (state.pinHash ? 'Change PIN' : 'Set a PIN') + '</button>' + (state.pinHash ? '<button class="btn alt small" data-act="pin-remove">Remove PIN</button>' : '') + '</div>' +
+      '<p style="margin-bottom:0"><button class="btn" data-act="role-toggle">Switch to ' + esc(state.nick || 'child') + '’s view</button></p></div>';
+    h += '<div class="card"><b>Look</b><label class="f">Style</label>' + sel('look', [['retro', 'Retro preschool TV everywhere (default)'], ['mixed', 'Retro for kid screens only'], ['classic', 'Classic calm look']]) +
+      '<p class="small muted">Kid screens are Words and Play. Parent screens keep the calm look in the middle option.</p></div>';
+    h += '<div class="card"><b>Backup</b><p class="small muted">Saves progress, settings, and activities as a file. Recordings are stored in this browser and are not in the backup.</p>' +
+      '<div class="row"><button class="btn alt" data-act="backup">Download backup</button><label class="btn alt" style="display:inline-flex;align-items:center;cursor:pointer">Restore<input id="restoreFile" type="file" accept="application/json" hidden></label></div>' +
+      '<p><button class="btn coral small" data-act="reset">Erase everything on this device</button></p></div>';
+    h += '<div class="card note"><b>Privacy</b><p class="small">No accounts, ads, or analytics. Everything is saved on this device. The only thing that uses the internet is the optional Groq story button on the Play tab, which sends just a word and the unit name. Clearing Safari website data will erase it, so download a backup now and then.</p></div>';
+    h += '<div class="card"><b>Install on iPad or iPhone</b><p class="small">' + (standalone ? 'You are running it as an app. 🎉' : 'Open this page in Safari, tap the Share button, then "Add to Home Screen".') + '</p></div>';
+    h += '<p class="small muted center">Solo’s Academy v1. Word sounds are approximations. Please have a native speaker check them.</p>';
+    return h;
+  }
+  function openOnboarding() {
+    openModal('<div class="center"><div class="big-em">✈️</div><h2 style="margin-top:0">Welcome aboard</h2></div><p>Two optional details help the app show the right stage. They stay on this device only. Later, set a parent PIN in Settings, then use the 👧 button to hand the device to ' + 'your child.</p>' +
+      '<label class="f" for="o-nick">Nickname (optional)</label><input type="text" id="o-nick" maxlength="30" autocomplete="off">' +
+      '<label class="f" for="o-birth">Birth month and year</label><input type="month" id="o-birth">' +
+      '<div class="row" style="margin-top:14px"><button class="btn" data-act="onboard-save">Start</button><button class="btn alt" data-act="onboard-skip">Skip for now</button></div>');
+  }
+
+  /* ---------- router ---------- */
+  const ctx = {
+    S, ui, esc, speak, toast, dkey, LBY, starTotal, isChild,
+    get state() { return state; },
+    save: () => save(),
+    render: (k) => render(k)
+  };
+  const ROUTES = { today: viewToday, words: viewWords, play: () => S.fun.viewPlay(ctx), stars: viewStars, feel: () => (isChild() ? viewKidFeel() : viewFeel()), theme: viewTheme, grow: viewGrow, act: viewAct, settings: viewSettings };
+  const KID_ROUTES = ['words', 'play'];
+  function applyLook(r) {
+    const un = S.units.find((x) => x.id === state.unit) || S.units[0];
+    document.body.className = 'look-' + (state.look || 'retro') + ((isChild() || KID_ROUTES.indexOf(r) >= 0) ? ' kid' : '');
+    document.body.style.setProperty('--u1', un.c1); document.body.style.setProperty('--u2', un.c2);
+  }
+  function route() {
+    const r = (location.hash || '').replace('#/', '');
+    if (isChild()) return KID_TABS.some((t) => t[0] === r) ? r : 'play';
+    return ROUTES[r] && r !== 'stars' ? r : (r === 'stars' ? 'words' : 'today');
+  }
+  function renderTabs() {
+    const tabs = isChild() ? KID_TABS : PARENT_TABS; const nav = $('#tabs');
+    nav.innerHTML = tabs.map((t) => '<button data-act="go" data-to="' + t[0] + '"><span>' + t[1] + '</span>' + t[2] + '</button>').join('');
+  }
+  function render(keepScroll) {
+    const r = route(); const y = window.scrollY;
+    stopBreath();
+    applyLook(r);
+    renderTabs();
+    $('#view').innerHTML = ROUTES[r]();
+    $$('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.to === r));
+    updateHeader();
+    window.scrollTo(0, keepScroll ? y : 0);
+  }
+  function go(to) { if (location.hash === '#/' + to) render(false); else location.hash = '#/' + to; }
+  window.addEventListener('hashchange', () => render(false));
+
+  /* ---------- events ---------- */
+  document.addEventListener('toggle', (e) => {
+    const t = e.target;
+    if (t && t.matches && t.matches('details[data-id]')) ui.openDetails[t.dataset.id] = t.open;
+  }, true);
+
+  document.addEventListener('click', (e) => {
+    if (e.target.id === 'modal') { closeModal(); return; }
+    const el = e.target.closest('[data-act]'); if (!el) return;
+    const a = el.dataset.act; const d = el.dataset;
+    switch (a) {
+      case 'go': closeModal(); go(d.to); break;
+      case 'modal-close': closeModal(); break;
+      case 'toggle-block': {
+        e.preventDefault(); e.stopPropagation();
+        const k = dkey(); state.done[k] = state.done[k] || {}; state.done[k][d.b] = !state.done[k][d.b];
+        save(); render(true); if (state.done[k][d.b]) toast('Nice! +1 ⭐');
+        break;
+      }
+      case 'feel-pick': state.feelLog[dkey()] = d.id; save(); render(true); toast('Feeling saved'); break;
+      case 'feel-open': openFeeling(d.id); break;
+      case 'feel-log': state.feelLog[dkey()] = d.id; save(); closeModal(); toast('Saved. Thank you for telling me.'); if (route() === 'feel') render(true); break;
+      case 'breath-start': startBreath(); break;
+      case 'breath-modal': openModal('<button class="btn alt small close" data-act="modal-close">Close</button><div class="card breath" style="box-shadow:none;border:0"><div class="plane" id="bplane">✈️</div><div class="count" id="bcount">Ready for takeoff?</div><button class="btn" data-act="breath-start">Start 3 flights</button></div>'); break;
+      case 'say-en': speak(d.text, 'en-US', d.slow === '1'); break;
+      case 'speak': {
+        const L = LBY[d.lang]; const w = WBY[d.id]; const k = lkey(d.lang, d.id);
+        const ok = speak(w[d.lang][0], L.tts, d.slow === '1');
+        if (!ok) { if (recSet.has(k)) playRecording(k); else toast('No ' + L.name + ' voice here. Open the card and tap Record.'); }
+        break;
+      }
+      case 'open-card': openCard(d.lang, d.id); break;
+      case 'open-en': openEnglish(+d.c, +d.w); break;
+      case 'card-nav': {
+        if (!ui.cardList.length) break;
+        stopRecording(true);
+        ui.cardIdx = (ui.cardIdx + (+d.dir) + ui.cardList.length) % ui.cardList.length; refreshCard(); break;
+      }
+      case 'card-learned': { const c = ui.cardList[ui.cardIdx]; const k = lkey(c.lang, c.id); state.learned[k] = !state.learned[k]; save(); refreshCard(); if (state.learned[k]) toast('Learned! ✅'); break; }
+      case 'card-said': { const c = ui.cardList[ui.cardIdx]; const k = lkey(c.lang, c.id); state.said[k] = !state.said[k]; save(); refreshCard(); if (state.said[k]) toast('+1 ⭐'); break; }
+      case 'rec-start': startRecording(d.key); break;
+      case 'rec-stop': if (recorder && recorder.state !== 'inactive') recorder.stop(); setRecUi(false); break;
+      case 'rec-play': playRecording(d.key); break;
+      case 'rec-del': recDel(d.key).then(() => { recSet.delete(d.key); toast('Recording deleted'); refreshCard(); }).catch(() => toast('Could not delete')); break;
+      case 'wlang': ui.wlang = d.lang; ui.wcat = 'all'; if (route() === 'words') render(false); else go('words'); break;
+      case 'wcat': ui.wcat = d.cat; render(true); break;
+      case 'songs': {
+        const L = LBY[ui.wlang];
+        openModal('<button class="btn alt small close" data-act="modal-close">Close</button><h2 style="margin-top:0">' + L.flag + ' ' + esc(L.name) + ' songs</h2><ul>' + (S.langSongs[ui.wlang] || []).map((s) => '<li>' + esc(s) + '</li>').join('') + '</ul><p class="small muted">Titles only. Look them up at your library or on a children’s video site, and sing along. Songs are one of the best ways to learn sounds.</p>');
+        break;
+      }
+      case 'quiz-start': startQuiz(); break;
+      case 'quiz-hear': if (quiz) speak(quiz.target[quiz.lang][0], LBY[quiz.lang].tts); break;
+      case 'quiz-pick': {
+        if (!quiz || quiz.locked) break;
+        const o = quiz.opts[+d.i];
+        if (o.id === quiz.target.id) {
+          quiz.locked = true; quiz.score++; state.quizStars = (state.quizStars || 0) + 1; save(); el.classList.add('pop'); toast('Yes! ⭐');
+          setTimeout(() => { quiz.i++; renderQuiz(); }, 800);
+        } else { el.classList.add('shake'); setTimeout(() => el.classList.remove('shake'), 400); }
+        break;
+      }
+      case 'tweek': ui.tweek = +d.n; render(true); break;
+      case 'gtab': ui.gtab = d.t; render(false); break;
+      case 'mband': ui.mband = d.id; render(true); break;
+      case 'act-open': openActivity(d.id || null); break;
+      case 'act-save': {
+        const name = $('#aname').value.trim(); if (!name) { toast('Please add a name'); break; }
+        const id = $('#aid').value; const rec = { id: id || 'a-' + Date.now(), name, type: $('#atype').value, status: $('#astatus').value, when: $('#awhen').value.trim(), note: $('#anote').value.trim(), lang: '' };
+        const i = state.activities.findIndex((x) => x.id === id);
+        if (i >= 0) { rec.lang = state.activities[i].lang; state.activities[i] = rec; } else state.activities.push(rec);
+        save(); closeModal(); render(true); toast('Saved'); break;
+      }
+      case 'act-del': if (window.confirm('Delete this activity?')) { state.activities = state.activities.filter((x) => x.id !== d.id); save(); closeModal(); render(true); } break;
+      case 'act-idea': {
+        const x = S.activityIdeas[+d.i];
+        if (state.activities.some((y) => y.name === x.name)) { toast('Already on the list'); break; }
+        state.activities.push({ id: 'a-' + Date.now(), name: x.name, type: x.type, status: 'planned', when: '', note: '', lang: '' }); save(); render(true); toast('Added to the list'); break;
+      }
+      case 'test-voice': { const L = LBY[state.focusLang]; const w = WBY.hello; if (!speak(w[L.id][0], L.tts)) toast('No ' + L.name + ' voice on this device'); else toast('Playing ' + L.name); break; }
+      case 'backup': {
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob); const link = document.createElement('a');
+        link.href = url; link.download = 'solos-academy-backup-' + dkey() + '.json'; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000); break;
+      }
+      case 'reset': if (window.confirm('Erase all progress and settings on this device? This cannot be undone.')) { try { localStorage.removeItem(KEY); } catch (er) { /* ignore */ } state = load(); state.onboarded = true; save(); render(false); toast('Erased'); } break;
+      case 'onboard-save': state.nick = ($('#o-nick').value || '').trim(); state.birth = $('#o-birth').value || ''; state.onboarded = true; save(); closeModal(); render(false); break;
+      case 'onboard-skip': state.onboarded = true; save(); closeModal(); break;
+      case 'splash-go': hideSplash(); break;
+      case 'role-toggle':
+        if (isChild()) { if (state.pinHash) openPinEntry(); else { state.role = 'parent'; save(); go('today'); render(false); } }
+        else { state.role = 'child'; save(); closeModal(); go('play'); render(false); toast('Solana’s view'); }
+        break;
+      case 'pin-submit': submitPin(); break;
+      case 'pin-set-open': openPinSet(); break;
+      case 'pin-save': savePin(); break;
+      case 'pin-remove': state.pinHash = ''; state.pinSalt = ''; save(); render(true); toast('PIN removed'); break;
+      default: S.fun.handle(a, d, ctx); break;
+    }
+  });
+
+  document.addEventListener('change', (e) => {
+    const el = e.target;
+    if (el.dataset && el.dataset.set) {
+      const k = el.dataset.set; let v = el.value;
+      if (k === 'rate') v = parseFloat(v);
+      if (k === 'themeStart' && planTheme().id !== 'trees') { state.unitStarts = state.unitStarts || {}; state.unitStarts[planTheme().id] = v; } else state[k] = v;
+      save();
+      if (k === 'themeStart') ui.tweek = null;
+      if (k !== 'nick') toast('Saved');
+      render(true);
+    } else if (el.dataset && el.dataset.hs) {
+      state.homeSetup = state.homeSetup || {}; state.homeSetup[el.dataset.hs] = el.checked; save(); render(true);
+    } else if (el.dataset && el.dataset.ms) {
+      state.milestones[el.dataset.ms] = el.checked; save(); render(true);
+    } else if (el.id === 'restoreFile' && el.files && el.files[0]) {
+      const fr = new FileReader();
+      fr.onload = () => {
+        try {
+          const o = JSON.parse(fr.result); if (!o || typeof o !== 'object' || !o.done) throw new Error('bad');
+          state = Object.assign(defaults(), o); save(); render(false); toast('Restored');
+        } catch (er) { toast('That file does not look like a Solo’s Academy backup.'); }
+      };
+      fr.readAsText(el.files[0]);
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !$('#modal').hidden) closeModal();
+    if (e.key === 'Enter' && e.target && e.target.id === 'pinIn') submitPin();
+  });
+
+  /* ---------- start ---------- */
+  function hideSplash() {
+    const sp = $('#splash'); if (!sp || sp.hidden) return;
+    sp.hidden = true; speak('Hello friends! Let’s learn!', 'en-US');
+    if (!state.onboarded && !isChild()) openOnboarding();
+  }
+  S.fun.mount();
+  render(false);
+  if (state.look !== 'classic') { $('#splash').hidden = false; } else if (!state.onboarded && !isChild()) openOnboarding();
+  if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  }
+})();

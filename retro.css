@@ -1,0 +1,99 @@
+/* Solo's Academy retro look: late 90s / early 2000s preschool TV. Construction-paper shapes,
+   chunky outlines, hard drop shadows, primary colors, polka dots. Original art only.
+   look-retro = everywhere. look-mixed + .kid = kid screens only. look-classic = none of this. */
+
+.splash { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; background: #3a86ff; overflow: hidden; }
+.splash[hidden] { display: none; }
+.splash::before { content: ''; position: absolute; inset: -50%; background: repeating-conic-gradient(rgba(255,255,255,.22) 0 10deg, transparent 10deg 20deg); animation: spin-slow 22s linear infinite; }
+.splash-inner { position: relative; }
+.splash-mascot { display: block; width: 150px; height: 150px; margin: 0 auto; animation: tvbob 1.6s ease-in-out infinite; }
+.splash-title { font-family: "Arial Rounded MT Bold", ui-rounded, "Chalkboard SE", system-ui, sans-serif; font-size: clamp(40px, 12vw, 64px); margin: 14px 0 0; white-space: nowrap; line-height: 1.1; }
+.splash-title span { display: inline-block; color: #ffd23f; -webkit-text-stroke: 3px #2b2250; paint-order: stroke fill; text-shadow: 3px 3px 0 #2b2250; }
+.splash-title span:nth-child(3n) { color: #ff4d6d; } .splash-title span:nth-child(3n+1) { color: #2ec4b6; } .splash-title span:nth-child(3n+2) { color: #fff; }
+.splash-sub { color: #fff; font-weight: 800; font-size: 20px; text-shadow: 2px 2px 0 #2b2250; margin: 6px 0 0; }
+.splash-play { margin-top: 28px; border: 5px solid #2b2250; border-radius: 999px; background: #ff4d6d; color: #fff; font: inherit; font-weight: 800; font-size: 30px; padding: 14px 44px; box-shadow: 6px 6px 0 #2b2250; cursor: pointer; }
+.splash-play:active { transform: translate(4px, 4px); box-shadow: 2px 2px 0 #2b2250; }
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+@keyframes tvbob { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-8px) rotate(4deg); } }
+
+.mascot-slot { display: none; }
+body.look-retro .mascot-slot:not(.splash-mascot) { display: block; width: 58px; height: 58px; flex: none; animation: tvbob 1.8s ease-in-out infinite; }
+body.look-retro .brand-plane { display: none; }
+.mascot-slot svg { width: 100%; height: 100%; }
+.look-classic .splash { display: none; }
+
+/* shared retro skin, applied to the whole app or only to kid screens */
+:is(body.look-retro, body.look-mixed.kid) {
+  --ink: #2b2250; --card: #ffffff; --card2: #fff7d6; --line: #2b2250; --muted: #5b4f8a;
+  --shadow: 5px 5px 0 #2b2250; --r: 24px; --blue: #3a86ff; --leaf: #2ec4b6; --leaf-d: #0b6b63; --leaf-bg: #d7f7f2;
+  --sun-bg: #fff0b3; --coral-bg: #ffd9de; --plum-bg: #ece0ff;
+  font-family: "Arial Rounded MT Bold", ui-rounded, "SF Pro Rounded", "Chalkboard SE", "Nunito", system-ui, sans-serif;
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--u1, #c9f4c4), var(--u2, #effbd9)) !important; background-attachment: fixed !important;
+}
+:is(body.look-retro, body.look-mixed.kid)::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .6;
+  background-image: radial-gradient(#fff 18%, transparent 20%), radial-gradient(#fff 12%, transparent 14%);
+  background-size: 56px 56px; background-position: 0 0, 28px 28px;
+}
+:is(body.look-retro, body.look-mixed.kid) #app { position: relative; z-index: 1; }
+:is(body.look-retro, body.look-mixed.kid) .card,
+:is(body.look-retro, body.look-mixed.kid) .block,
+:is(body.look-retro, body.look-mixed.kid) details.acc,
+:is(body.look-retro, body.look-mixed.kid) .wc { border: 4px solid var(--ink); box-shadow: 5px 5px 0 var(--ink); }
+:is(body.look-retro, body.look-mixed.kid) .card.hero { background: #bfe5ff; }
+:is(body.look-retro, body.look-mixed.kid) .card.note { background: var(--sun-bg); border-color: var(--ink); }
+:is(body.look-retro, body.look-mixed.kid) .card.warn { background: var(--coral-bg); border-color: var(--ink); }
+:is(body.look-retro, body.look-mixed.kid) .card.good { background: var(--leaf-bg); border-color: var(--ink); }
+:is(body.look-retro, body.look-mixed.kid) .btn,
+:is(body.look-retro, body.look-mixed.kid) .chip { border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); font-weight: 800; }
+:is(body.look-retro, body.look-mixed.kid) .btn { background: #3a86ff; color: #fff; }
+:is(body.look-retro, body.look-mixed.kid) .btn.alt { background: #fff; color: var(--ink); }
+:is(body.look-retro, body.look-mixed.kid) .btn.sun { background: #ffd23f; color: var(--ink); }
+:is(body.look-retro, body.look-mixed.kid) .btn.coral { background: #ff4d6d; color: #fff; }
+:is(body.look-retro, body.look-mixed.kid) .btn:active,
+:is(body.look-retro, body.look-mixed.kid) .chip:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--ink); }
+:is(body.look-retro, body.look-mixed.kid) .btn:disabled { box-shadow: none; }
+:is(body.look-retro, body.look-mixed.kid) .chip[aria-pressed="true"], :is(body.look-retro, body.look-mixed.kid) .chip.on { background: #ff4d6d; border-color: var(--ink); color: #fff; }
+:is(body.look-retro, body.look-mixed.kid) input[type=text], :is(body.look-retro, body.look-mixed.kid) input[type=date], :is(body.look-retro, body.look-mixed.kid) input[type=month],
+:is(body.look-retro, body.look-mixed.kid) select, :is(body.look-retro, body.look-mixed.kid) textarea { border: 3px solid var(--ink); border-radius: 16px; background: #fffdf2; color: var(--ink); }
+:is(body.look-retro, body.look-mixed.kid) h2 { text-shadow: 2px 2px 0 #fff; }
+:is(body.look-retro, body.look-mixed.kid) .say { border-left-color: #ff4d6d; background: #fffdf2; }
+:is(body.look-retro, body.look-mixed.kid) .wc.learned { background: #d7f7f2; }
+:is(body.look-retro, body.look-mixed.kid) .progress { border: 3px solid var(--ink); background: #fff; }
+:is(body.look-retro, body.look-mixed.kid) .check { border: 3px solid var(--ink); }
+:is(body.look-retro, body.look-mixed.kid) .play-card { background: #fff; }
+:is(body.look-retro, body.look-mixed.kid) .big-word.tl { color: #ff4d6d; }
+:is(body.look-retro, body.look-mixed.kid) .sticker:not(.on) { background: #eee; opacity: .75; }
+:is(body.look-retro, body.look-mixed.kid) .sticker.on { background: #fff0b3; animation: stickpop .5s ease-out both; }
+@keyframes stickpop { 0% { transform: scale(.6) rotate(-8deg); } 70% { transform: scale(1.08) rotate(2deg); } 100% { transform: none; } }
+
+/* retro header and tab bar (full retro only) */
+body.look-retro .top { gap: 10px; }
+body.look-retro .brand { gap: 10px; }
+body.look-retro h1 { color: var(--ink); text-shadow: 2px 2px 0 #fff; }
+body.look-retro .sub { color: var(--ink); font-weight: 800; background: #fff; border: 3px solid var(--ink); border-radius: 14px; padding: 1px 10px; display: inline-block; box-shadow: 2px 2px 0 var(--ink); }
+body.look-retro .stars, body.look-retro .icon-btn { border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); background: #fff; }
+body.look-retro .tabs { background: #ffd23f; border-top: 5px solid var(--ink); backdrop-filter: none; box-shadow: none; }
+body.look-retro .tabs button { color: var(--ink); font-size: 11px; }
+body.look-retro .tabs button.on { background: #ff4d6d; color: #fff; border: 3px solid var(--ink); border-radius: 16px; transform: translateY(-8px) rotate(-3deg); box-shadow: 3px 3px 0 var(--ink); }
+body.look-retro .modal-card { border: 4px solid var(--ink); }
+body.look-retro .toast { background: var(--ink); }
+
+/* 7 tabs fit on a phone */
+.tabs button { min-width: 0; }
+.tabs button span { font-size: 20px; }
+
+@media (prefers-reduced-motion: reduce) { .splash::before, .splash-mascot, .mascot-slot, .sticker.on { animation: none !important; } }
+
+/* fixes: splash mascot visibility, compact header on phones */
+.splash .mascot-slot.splash-mascot { display: block; }
+body.look-retro h1 { font-size: 21px; white-space: nowrap; }
+body.look-retro .stars { white-space: nowrap; padding: 6px 12px; }
+body.look-retro .sub { font-size: 13px; }
+@media (max-width: 420px) { body.look-retro .mascot-slot:not(.splash-mascot) { width: 48px; height: 48px; } }
+body .splash .splash-title { font-size: clamp(40px, 12vw, 64px); }
+.grid.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.sticker .big-em { font-size: 44px; }
+
+:is(body.look-retro, body.look-mixed.kid) .parent-move { background: #fff0b3; }
