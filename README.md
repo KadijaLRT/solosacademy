@@ -1,6 +1,6 @@
 # Solo's Academy
 
-A private learning app for Solo, ages 2 to 10. It runs in Safari on an iPad or iPhone, installs to the home screen, and works offline. There are no accounts, ads, or tracking. Everything is saved on the device. The only thing that uses the internet is the optional Groq story button (see step 4 below).
+A private learning app for Solo. It runs in Safari on an iPad or iPhone, installs to the home screen, and works offline. There are no accounts, ads, or tracking. Everything is saved on the device. The only thing that uses the internet is the optional Groq story button (see step 4 below).
 
 This app merges the earlier Sky Academy app with the Little Learners play features, and uses a retro preschool TV look (Sunny the sun mascot, chunky outlines, polka dots, a "Let's Learn!" opening screen).
 
