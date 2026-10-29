@@ -1,0 +1,45 @@
+/* Solo's Academy: Games tab styles (balloons, drag pieces, rainbow). */
+.rb { position: relative; width: 220px; height: 112px; margin: 6px auto 10px; }
+.rb i { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); border: 12px solid; border-bottom: 0; border-radius: 999px 999px 0 0; box-sizing: border-box; transition: border-color .4s; }
+
+.gbtns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 10px 0; }
+.gbig { border: 3px solid var(--ink); border-radius: 18px; background: #ffd23f; color: var(--ink); font: inherit; font-weight: 800; font-size: 15px; padding: 14px 4px; min-height: 108px; cursor: pointer; box-shadow: 4px 4px 0 var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.gbig span { font-size: 38px; line-height: 1; }
+.gbig:nth-child(2) { background: #8ee0ff; }
+.gbig:nth-child(3) { background: #ff9fb2; }
+.gbig:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+
+.lgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 8px; }
+.lbtn { position: relative; border: 3px solid var(--ink); border-radius: 14px; background: #fff; color: var(--ink); font: inherit; font-weight: 800; font-size: 22px; min-height: 56px; cursor: pointer; box-shadow: 2px 2px 0 var(--ink); }
+.lbtn em { position: absolute; top: -9px; right: -6px; font-style: normal; font-size: 16px; }
+
+.gprompt { font-size: 28px; font-weight: 800; line-height: 1.15; margin: 6px 0 10px; }
+
+.balloons { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 14px; margin: 14px 0 24px; justify-items: center; }
+.balloon { position: relative; width: 132px; height: 156px; border: 3px solid var(--ink); border-radius: 50% 50% 48% 48% / 56% 56% 44% 44%; background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, .75) 0 12%, transparent 13%), var(--c); color: #fff; font: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 4px 5px 0 var(--ink); animation: gbob 3.2s ease-in-out infinite; animation-delay: var(--d, 0s); -webkit-tap-highlight-color: transparent; }
+.balloon::after { content: ''; position: absolute; left: 50%; bottom: -26px; width: 3px; height: 24px; background: var(--ink); transform: translateX(-50%); }
+.balloon b { font-size: 56px; line-height: 1; text-shadow: 2px 2px 0 var(--ink); }
+.balloon b.em { font-size: 58px; text-shadow: none; }
+.balloon small { font-size: 28px; font-weight: 800; text-shadow: 2px 2px 0 var(--ink); }
+.balloon.popped { animation: gpopout .35s ease-out forwards; pointer-events: none; }
+@keyframes gbob { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-9px) rotate(1.5deg); } }
+@keyframes gpopout { 0% { transform: scale(1); opacity: 1; } 40% { transform: scale(1.25); } 100% { transform: scale(.1); opacity: 0; } }
+.wobble { animation: gwob .45s ease-in-out !important; }
+@keyframes gwob { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-9px); } 40% { transform: translateX(9px); } 60% { transform: translateX(-6px); } 80% { transform: translateX(6px); } }
+
+.slots, .tiles { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 12px 0; }
+.tiles { margin-top: 22px; min-height: 96px; padding: 10px; border-radius: 18px; background: rgba(255, 255, 255, .55); }
+.slot, .tile { width: 92px; height: 92px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font: inherit; color: var(--ink); }
+.slot { border: 3px dashed var(--ink); background: rgba(255, 255, 255, .7); cursor: pointer; padding: 0; }
+.slot.ok { border-style: solid; background: #b9f2c4; cursor: default; }
+.slot.fixed { background: #fff; }
+.slots.build .slot, .slots.build .tile { width: 78px; }
+.tile { border: 3px solid var(--ink); background: #fff; box-shadow: 3px 4px 0 var(--ink); touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; position: relative; z-index: 1; }
+.tile.sel { background: #ffe58a; outline: 4px solid #3a86ff; }
+.tile.lift { z-index: 60; box-shadow: 6px 8px 0 rgba(0, 0, 0, .25); cursor: grabbing; }
+.slot b, .tile b { font-size: 44px; line-height: 1; font-weight: 800; }
+.slot b.em, .tile b.em { font-size: 48px; }
+.slot b.shadow { filter: brightness(0); opacity: .3; }
+
+@media (prefers-reduced-motion: reduce) { .balloon { animation: none; } .rb i { transition: none; } }
+@media (max-width: 360px) { .gbtns { gap: 6px; } .balloon { width: 118px; height: 140px; } .slot, .tile { width: 80px; height: 80px; } }

@@ -41,6 +41,30 @@ This app merges the earlier Sky Academy app with the Little Learners play featur
 2. In Vercel, Project Settings, Environment Variables, add `GROQ_API_KEY`, then redeploy.
 3. The button calls `/api/spidey` (in `api/spidey.js`). The key stays on the server. The app sends only a word and the unit name.
 4. On any host without this function (for example Netlify Drop), the button shows a friendly message and the rest of the app keeps working.
+5. **If you see "model does not exist or you do not have access":** the function now tries `llama-3.1-8b-instant`, then `llama-3.3-70b-versatile`, then `openai/gpt-oss-20b`, then `openai/gpt-oss-120b`. To see which models your key can use, open `https://YOUR-SITE.vercel.app/api/spidey` in a browser (it lists model names only, never the key). To force one, add `GROQ_MODEL` in Vercel Environment Variables and redeploy. If every model is refused, check the model permissions for your project in the Groq console.
+
+## Games tab (for Solana)
+
+The Games tab is the first tab and the opening screen in Solana's view.
+
+Original games in the style of toddler alphabet puzzle apps. Nothing is copied from any other app. A wrong try just wobbles and says "Try again", and nothing is lost.
+
+- **Pop it!** Five balloons per round. She hears a letter or word and taps the matching balloon.
+- **Match it!** Letters: drag each big letter to its little letter. Unit words: drag each picture to its shadow. She can also tap a piece, then tap its spot.
+- **Build a word:** drag letters into the empty boxes. "1 missing letter" is the easy setting; "Spell it all" is harder. Spelling is always English.
+- **Rainbow:** finishing a game adds a color (and a star). Seven colors make a rainbow, which gives bonus stars. A letter gets a 🌈 after she gets it right 3 times.
+- **Letters or unit words:** the Letters section is English. The unit words section uses the unit you picked in the Theme tab, in English or Spanish.
+- **Letter cards:** tap any letter to see it, hear it, and (in the parent view) record the letter sound in your voice. Phones read single letters aloud as names, so your recorded sound teaches the sound best.
+- **Spoken instructions:** each game explains how to play out loud the first time it starts, and the **How to play** button repeats it any time. There is an on/off switch on the Games screen. Spanish instructions play only when she is practicing Spanish with unit words.
+
+## Voice pack (recordings between devices)
+
+Recordings are saved on the device where you make them. To move them to Solana's device: Settings, **Make voice pack**, then **Share** (AirDrop or Messages) to her device. On her device, open the parent view, go to Settings, and tap **Import**. Importing adds clips and replaces any clip with the same name. The file never leaves your own devices.
+
+## Character voices and Mom's voice
+
+- **Character-style voices (Play, Words and Story):** pick Hero, Silly helper, Sparkle, Big bear, or Regular. These only change the pitch and speed of the device's own voice. They are not the real voices from her shows. Sound drills in the Sing tab always use the regular voice so each sound stays clear. How they sound depends on the voices on the device, so test on her iPad.
+- **Mom's voice:** on a Words card in the parent view, tap **Record English** or **Record Spanish**, do your best character voice, then tap **Stop**. A **Mom** play button then appears for Solana. One clip per word and language, up to 20 seconds. Moving to another word stops and saves the clip. Clips stay on the device (not in the backup).
 
 ## Voices
 
@@ -59,7 +83,7 @@ Settings, **Download backup**. Restore from the same screen. Clearing Safari web
 
 ## Update the app
 
-Re-upload the folder. Change `CACHE` in `sw.js` to a new name each time (for example `solos-academy-v7`), then close and reopen the app twice.
+Re-upload the folder. Change `CACHE` in `sw.js` to a new name each time (for example `solos-academy-v10`), then close and reopen the app twice.
 
 ## Files
 

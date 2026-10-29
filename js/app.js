@@ -19,15 +19,15 @@
   const WBY = {}; S.words.forEach((w) => { WBY[w.id] = w; });
   const CATBY = {}; S.categories.forEach((c) => { CATBY[c.id] = c; });
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-  const KID_TABS = [['play', '🎬', 'Play'], ['words', '🗣️', 'Words'], ['feel', '💛', 'Feelings'], ['stars', '⭐', 'Stickers']];
-  const PARENT_TABS = [['today', '🏠', 'Today'], ['words', '🗣️', 'Words'], ['play', '🎬', 'Play'], ['feel', '💛', 'Feelings'], ['theme', '🌳', 'Theme'], ['grow', '🚀', 'Grow'], ['act', '🎭', 'Activities']];
+  const KID_TABS = [['games', '🎈', 'Games'], ['play', '🎬', 'Play'], ['words', '🗣️', 'Words'], ['feel', '💛', 'Feelings'], ['stars', '⭐', 'Stickers']];
+  const PARENT_TABS = [['today', '🏠', 'Today'], ['words', '🗣️', 'Words'], ['play', '🎬', 'Play'], ['games', '🎈', 'Games'], ['feel', '💛', 'Feelings'], ['theme', '🌳', 'Theme'], ['grow', '🚀', 'Grow'], ['act', '🎭', 'Activities']];
 
   /* ---------- state ---------- */
   function defaults() {
     return {
       v: 1, birth: '', nick: 'Solana', role: 'parent', pinHash: '', pinSalt: '', themeStart: '', mode: 'focus', focusLang: 'es', level: 'standard', rate: 0.8,
       done: {}, learned: {}, said: {}, feelLog: {}, milestones: {}, activities: null, quizStars: 0, onboarded: false,
-      look: 'retro', unit: 'trees', songDays: [], log: [], customWords: {}, fmastered: {}, homeSetup: {}, unitStarts: {}
+      look: 'retro', charVoice: 'hero', gameStars: 0, rbBands: 0, rainbows: 0, letterWins: {}, unit: 'trees', songDays: [], log: [], customWords: {}, fmastered: {}, homeSetup: {}, unitStarts: {}
     };
   }
   function load() {
@@ -95,6 +95,7 @@
     n += Object.keys(state.said).filter((k) => state.said[k]).length;
     n += state.quizStars || 0;
     n += (state.songDays || []).length;
+    n += state.gameStars || 0;
     return n;
   }
 
@@ -127,7 +128,8 @@
     return voices.find((v) => normTag(v.lang) === t) || voices.find((v) => normTag(v.lang).split('-')[0] === base) || null;
   }
   function hasVoice(tag) { return !!findVoice(tag); }
-  function speak(text, tag, slow) {
+  /* opts is optional: { pitch, rate } gives a character-style sound (rate is a multiplier). */
+  function speak(text, tag, slow, opts) {
     try {
       if (!('speechSynthesis' in window)) return false;
       const v = findVoice(tag);
@@ -135,8 +137,9 @@
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = tag; if (v) u.voice = v;
-      u.rate = clamp((state.rate || 0.8) * (slow ? 0.65 : 1), 0.3, 1.2);
-      u.pitch = 1.05;
+      u.rate = clamp((state.rate || 0.8) * (slow ? 0.65 : 1) * ((opts && opts.rate) || 1), 0.3, 1.3);
+      u.pitch = clamp((opts && opts.pitch) || 1.05, 0.1, 2);
+      if (opts && opts.onend) u.onend = opts.onend;
       speechSynthesis.speak(u);
       return true;
     } catch (e) { return false; }
@@ -144,7 +147,7 @@
   if ('speechSynthesis' in window) { loadVoices(); try { speechSynthesis.onvoiceschanged = loadVoices; } catch (e) { /* ignore */ } }
 
   /* ---------- recordings (IndexedDB) ---------- */
-  let dbp = null; let recSet = new Set(); let recorder = null; let recStream = null; let recChunks = []; let recTarget = null;
+  let dbp = null; let recSet = new Set(); let recorder = null; let recStream = null; let recChunks = []; let recTarget = null; let recCb = null; let recTimer = null;
   function db() {
     if (dbp) return dbp;
     dbp = new Promise((res, rej) => {
@@ -175,29 +178,41 @@
     if (recStream) { try { recStream.getTracks().forEach((t) => t.stop()); } catch (e) { /* ignore */ } }
     recorder = null; recStream = null;
   }
-  async function startRecording(key) {
+  /* cb (optional) runs after the clip is saved instead of refreshing the Sky card. Clips stop by themselves after 20 seconds. */
+  async function startRecording(key, cb) {
     if (!navigator.mediaDevices || !window.MediaRecorder) { toast('Recording is not supported in this browser.'); return; }
     try {
       recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const type = ['audio/mp4', 'audio/webm', 'audio/ogg'].find((t) => window.MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t));
       recorder = type ? new MediaRecorder(recStream, { mimeType: type }) : new MediaRecorder(recStream);
-      recChunks = []; recTarget = key;
+      recChunks = []; recTarget = key; recCb = cb || null;
       recorder.ondataavailable = (e) => { if (e.data && e.data.size) recChunks.push(e.data); };
       recorder.onstop = async () => {
+        clearTimeout(recTimer);
+        const after = recCb; recCb = null;
         const blob = new Blob(recChunks, { type: recorder && recorder.mimeType ? recorder.mimeType : (type || 'audio/mp4') });
         try { await recPut(recTarget, blob); recSet.add(recTarget); toast('Recording saved'); } catch (e) { toast('Could not save the recording.'); }
-        stopRecording(true); refreshCard();
+        stopRecording(true); if (after) after(); else refreshCard();
       };
       recorder.start();
+      clearTimeout(recTimer); recTimer = setTimeout(() => { try { if (recorder && recorder.state === 'recording') recorder.stop(); } catch (e) { /* ignore */ } }, 20000);
       setRecUi(true);
     } catch (e) { toast('Microphone permission is needed to record.'); stopRecording(true); }
   }
+  /* iOS only lets audio play inside a tap. The clip is read from storage after the tap, so one shared
+     element is "unlocked" with a silent sound during the tap and then given the real clip. */
+  const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+  let clipEl = null; let clipUrl = null;
   async function playRecording(key) {
     try {
+      try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) { /* ignore */ }
+      if (!clipEl) clipEl = new Audio();
+      clipEl.pause(); clipEl.src = SILENT; const unlock = clipEl.play(); if (unlock && unlock.catch) unlock.catch(() => {});
       const blob = await recGet(key);
       if (!blob) { toast('No recording yet'); return; }
-      const url = URL.createObjectURL(blob); const a = new Audio(url);
-      a.onended = () => URL.revokeObjectURL(url); a.play().catch(() => toast('Could not play the recording.'));
+      if (clipUrl) URL.revokeObjectURL(clipUrl);
+      clipUrl = URL.createObjectURL(blob); clipEl.src = clipUrl;
+      clipEl.play().catch(() => toast('Could not play the recording.'));
     } catch (e) { toast('Could not play the recording.'); }
   }
   function setRecUi(on) {
@@ -205,6 +220,28 @@
     b.dataset.act = on ? 'rec-stop' : 'rec-start';
     b.textContent = on ? '⏹ Stop' : '🎙 Record';
     b.classList.toggle('coral', on);
+  }
+
+  /* ---------- voice pack: move recordings between devices as one file ---------- */
+  function blobToDataUrl(blob) { return new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => rej(fr.error); fr.readAsDataURL(blob); }); }
+  async function buildPack() {
+    const keys = await recKeys(); const clips = {};
+    for (const k of keys) { const blob = await recGet(k); if (blob) clips[k] = await blobToDataUrl(blob); }
+    const json = JSON.stringify({ app: 'solos-academy', kind: 'voicepack', v: 1, made: dkey(), clips });
+    return { file: new File([json], 'solos-voice-pack-' + dkey() + '.json', { type: 'application/json' }), n: Object.keys(clips).length };
+  }
+  async function importPack(file) {
+    try {
+      const o = JSON.parse(await file.text());
+      if (!o || o.app !== 'solos-academy' || o.kind !== 'voicepack' || !o.clips || typeof o.clips !== 'object') throw new Error('bad');
+      let n = 0;
+      for (const k of Object.keys(o.clips)) {
+        const u = o.clips[k];
+        if (typeof u !== 'string' || u.indexOf('data:audio/') !== 0 || k.length > 200) continue;
+        const blob = await (await fetch(u)).blob(); await recPut(k, blob); recSet.add(k); n++;
+      }
+      toast(n ? 'Imported ' + n + (n === 1 ? ' recording' : ' recordings') : 'No recordings found in that file.'); render(true);
+    } catch (er) { toast('That file does not look like a Solo’s Academy voice pack.'); }
   }
 
   /* ---------- profiles: parent view and child view, with an optional PIN ---------- */
@@ -252,8 +289,8 @@
     const sc = $('#starCount'); if (sc) sc.textContent = starTotal();
     const sub = $('#subtitle');
     if (sub) {
-      const seg = { today: 'Today’s flight plan', words: 'Word time!', play: 'Play time!', feel: 'Feelings time', theme: 'Pick our show!', grow: 'Grow', act: 'Activities', settings: 'Settings' }[route()];
-      const kidSeg = { play: 'Play time!', words: 'Word time!', feel: 'How do you feel?', stars: 'My stickers!' }[route()];
+      const seg = { today: 'Today’s flight plan', words: 'Word time!', play: 'Play time!', games: 'Game time!', feel: 'Feelings time', theme: 'Pick our show!', grow: 'Grow', act: 'Activities', settings: 'Settings' }[route()];
+      const kidSeg = { play: 'Play time!', games: 'Game time!', words: 'Word time!', feel: 'How do you feel?', stars: 'My stickers!' }[route()];
       if (isChild()) sub.textContent = 'Hi ' + (state.nick || 'friend') + '! ' + (kidSeg || '');
       else sub.textContent = state.look !== 'classic' ? seg : (state.nick ? state.nick + '’s flight plan' : 'Learn, talk, and grow');
     }
@@ -698,6 +735,9 @@
       '<p style="margin-bottom:0"><button class="btn" data-act="role-toggle">Switch to ' + esc(state.nick || 'child') + '’s view</button></p></div>';
     h += '<div class="card"><b>Look</b><label class="f">Style</label>' + sel('look', [['retro', 'Retro preschool TV everywhere (default)'], ['mixed', 'Retro for kid screens only'], ['classic', 'Classic calm look']]) +
       '<p class="small muted">Kid screens are Words and Play. Parent screens keep the calm look in the middle option.</p></div>';
+    h += '<div class="card"><b>Voice pack (recordings for another device)</b><p class="small muted">Record on your phone, then move your voice clips to Solana’s device. 1. Make the file here. 2. Share it (AirDrop or Messages) to her device. 3. On her device, open Settings and tap Import. This device has ' + recSet.size + (recSet.size === 1 ? ' recording' : ' recordings') + '. The file stays between your own devices.</p>' +
+      '<div class="row"><button class="btn alt" data-act="pack-make">' + (ui.pack ? 'Make it again' : 'Make voice pack') + '</button><label class="btn alt" style="display:inline-flex;align-items:center;cursor:pointer">Import<input id="packFile" type="file" accept="application/json,.json" hidden></label></div>' +
+      (ui.pack ? '<p class="small">' + (ui.pack.n ? 'Ready: ' + ui.pack.n + (ui.pack.n === 1 ? ' recording.' : ' recordings.') : 'No recordings on this device yet.') + '</p>' + (ui.pack.n ? '<div class="row"><button class="btn sun" data-act="pack-share">📤 Share</button><button class="btn alt" data-act="pack-save">⬇ Save file</button></div>' : '') : '') + '</div>';
     h += '<div class="card"><b>Backup</b><p class="small muted">Saves progress, settings, and activities as a file. Recordings are stored in this browser and are not in the backup.</p>' +
       '<div class="row"><button class="btn alt" data-act="backup">Download backup</button><label class="btn alt" style="display:inline-flex;align-items:center;cursor:pointer">Restore<input id="restoreFile" type="file" accept="application/json" hidden></label></div>' +
       '<p><button class="btn coral small" data-act="reset">Erase everything on this device</button></p></div>';
@@ -716,12 +756,20 @@
   /* ---------- router ---------- */
   const ctx = {
     S, ui, esc, speak, toast, dkey, LBY, starTotal, isChild,
+    /* Parent recordings for the Play tab. Keys look like mom:unit:word:lang. */
+    rec: {
+      has: (k) => recSet.has(k),
+      play: (k) => playRecording(k),
+      start: (k, cb) => startRecording(k, cb),
+      stop: () => { try { if (recorder && recorder.state === 'recording') recorder.stop(); } catch (e) { /* ignore */ } },
+      active: () => (recorder && recorder.state === 'recording' ? recTarget : null)
+    },
     get state() { return state; },
     save: () => save(),
     render: (k) => render(k)
   };
-  const ROUTES = { today: viewToday, words: viewWords, play: () => S.fun.viewPlay(ctx), stars: viewStars, feel: () => (isChild() ? viewKidFeel() : viewFeel()), theme: viewTheme, grow: viewGrow, act: viewAct, settings: viewSettings };
-  const KID_ROUTES = ['words', 'play'];
+  const ROUTES = { today: viewToday, words: viewWords, play: () => S.fun.viewPlay(ctx), games: () => S.games.view(ctx), stars: viewStars, feel: () => (isChild() ? viewKidFeel() : viewFeel()), theme: viewTheme, grow: viewGrow, act: viewAct, settings: viewSettings };
+  const KID_ROUTES = ['words', 'play', 'games'];
   function applyLook(r) {
     const un = S.units.find((x) => x.id === state.unit) || S.units[0];
     document.body.className = 'look-' + (state.look || 'retro') + ((isChild() || KID_ROUTES.indexOf(r) >= 0) ? ' kid' : '');
@@ -729,7 +777,7 @@
   }
   function route() {
     const r = (location.hash || '').replace('#/', '');
-    if (isChild()) return KID_TABS.some((t) => t[0] === r) ? r : 'play';
+    if (isChild()) return KID_TABS.some((t) => t[0] === r) ? r : 'games';
     return ROUTES[r] && r !== 'stars' ? r : (r === 'stars' ? 'words' : 'today');
   }
   function renderTabs() {
@@ -834,19 +882,30 @@
         const url = URL.createObjectURL(blob); const link = document.createElement('a');
         link.href = url; link.download = 'solos-academy-backup-' + dkey() + '.json'; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000); break;
       }
+      case 'pack-make': buildPack().then((p) => { ui.pack = p; render(true); if (!p.n) toast('No recordings yet. Record some on a Words card first.'); }).catch(() => toast('Could not make the voice pack.')); break;
+      case 'pack-share': {
+        const f = ui.pack && ui.pack.file; if (!f) break;
+        if (navigator.canShare && navigator.canShare({ files: [f] })) navigator.share({ files: [f], title: 'Solo’s Academy voice pack' }).catch(() => {});
+        else { const url = URL.createObjectURL(f); const link = document.createElement('a'); link.href = url; link.download = f.name; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000); toast('Saved. Send the file to her device.'); }
+        break;
+      }
+      case 'pack-save': {
+        const f = ui.pack && ui.pack.file; if (!f) break;
+        const url = URL.createObjectURL(f); const link = document.createElement('a'); link.href = url; link.download = f.name; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000); break;
+      }
       case 'reset': if (window.confirm('Erase all progress and settings on this device? This cannot be undone.')) { try { localStorage.removeItem(KEY); } catch (er) { /* ignore */ } state = load(); state.onboarded = true; save(); render(false); toast('Erased'); } break;
       case 'onboard-save': state.nick = ($('#o-nick').value || '').trim(); state.birth = $('#o-birth').value || ''; state.onboarded = true; save(); closeModal(); render(false); break;
       case 'onboard-skip': state.onboarded = true; save(); closeModal(); break;
       case 'splash-go': hideSplash(); break;
       case 'role-toggle':
         if (isChild()) { if (state.pinHash) openPinEntry(); else { state.role = 'parent'; save(); go('today'); render(false); } }
-        else { state.role = 'child'; save(); closeModal(); go('play'); render(false); toast('Solana’s view'); }
+        else { state.role = 'child'; save(); closeModal(); go('games'); render(false); toast('Solana’s view'); }
         break;
       case 'pin-submit': submitPin(); break;
       case 'pin-set-open': openPinSet(); break;
       case 'pin-save': savePin(); break;
       case 'pin-remove': state.pinHash = ''; state.pinSalt = ''; save(); render(true); toast('PIN removed'); break;
-      default: S.fun.handle(a, d, ctx); break;
+      default: if (!S.games.handle(a, d, ctx)) S.fun.handle(a, d, ctx); break;
     }
   });
 
@@ -864,6 +923,8 @@
       state.homeSetup = state.homeSetup || {}; state.homeSetup[el.dataset.hs] = el.checked; save(); render(true);
     } else if (el.dataset && el.dataset.ms) {
       state.milestones[el.dataset.ms] = el.checked; save(); render(true);
+    } else if (el.id === 'packFile' && el.files && el.files[0]) {
+      importPack(el.files[0]); el.value = '';
     } else if (el.id === 'restoreFile' && el.files && el.files[0]) {
       const fr = new FileReader();
       fr.onload = () => {
@@ -886,7 +947,7 @@
     sp.hidden = true; speak('Hello friends! Let’s learn!', 'en-US');
     if (!state.onboarded && !isChild()) openOnboarding();
   }
-  S.fun.mount();
+  S.fun.mount(); S.games.mount(ctx);
   render(false);
   if (state.look !== 'classic') { $('#splash').hidden = false; } else if (!state.onboarded && !isChild()) openOnboarding();
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {

@@ -97,3 +97,5 @@ body .splash .splash-title { font-size: clamp(40px, 12vw, 64px); }
 .sticker .big-em { font-size: 44px; }
 
 :is(body.look-retro, body.look-mixed.kid) .parent-move { background: #fff0b3; }
+
+@media (max-width: 420px) { body.look-retro h1 { font-size: 18px; } body.look-retro .brand { gap: 6px; } body.look-retro .top { gap: 6px; } body.look-retro .stars { padding: 6px 10px; } }

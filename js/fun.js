@@ -37,6 +37,33 @@
     return { text: w.es, sound: '', tag: LBY.es.tts, name: 'Spanish', flag: '🇪🇸', rtl: false };
   }
   function tagFor(ctx, text) { return /[áéíóúñ]|mariposa/i.test(text) ? ctx.LBY.es.tts : 'en-US'; }
+  /* Character-style voice: the device voice with a different pitch and speed. Sing drills stay plain so sounds stay clear. */
+  function voiceOf(ctx) { return SA.voices.find((v) => v.id === ctx.state.charVoice) || SA.voices[0]; }
+  function say(ctx, text, tag, slow, plain, onend) {
+    const o = plain ? {} : Object.assign({}, voiceOf(ctx)); if (onend) o.onend = onend;
+    return ctx.speak(text, tag, slow, o);
+  }
+  function voiceRow(ctx) {
+    const cur = voiceOf(ctx).id;
+    return '<p class="small muted" style="margin-bottom:4px">Pick a voice:</p>' + chipRow(ctx, SA.voices.map((v) => [v.id, v.emoji + ' ' + v.name]), cur, 'pvoice', 'v');
+  }
+  /* Mom's voice: parent records a clip per word and language; Solana can play it. Stored on this device only. */
+  function momKey(ctx, w, lang) { return 'mom:' + unitOf(ctx).id + ':' + w.en + ':' + lang; }
+  function momCard(ctx, w, tl) {
+    const esc = ctx.esc; const child = ctx.isChild(); const lang = ctx.state.focusLang || 'es';
+    const slots = [['en', 'English', momKey(ctx, w, 'en')], ['tl', tl.name, momKey(ctx, w, lang)]];
+    const live = ctx.rec.active();
+    if (child && !slots.some((s) => ctx.rec.has(s[2]))) return '';
+    const btns = slots.map((s) => {
+      const has = ctx.rec.has(s[2]); const on = live === s[2];
+      let h = '';
+      if (has) h += '<button class="btn sun small" data-act="mplay" data-key="' + esc(s[2]) + '">▶ Mom: ' + esc(s[1]) + '</button> ';
+      if (!child) h += '<button class="btn ' + (on ? 'coral' : 'alt') + ' small" data-act="mrec" data-key="' + esc(s[2]) + '">' + (on ? '⏹ Stop' : (has ? '🎙 Redo ' : '🎙 Record ') + esc(s[1])) + '</button>';
+      return '<div style="margin:6px 0">' + h + '</div>';
+    }).join('');
+    return '<div class="card"><b>🎙 Mom’s voice</b>' + (child ? '' : '<p class="small muted">Do your best character voice, then tap Stop. One clip per word and language, up to 20 seconds. Clips stay on this device.</p>') + btns + '</div>';
+  }
+  F.say = say; F.unitOf = unitOf; F.wordsOf = wordsOf; F.tlFor = tlFor;
   function chipRow(ctx, items, cur, act, key) {
     return '<div class="chips">' + items.map((t) => '<button class="chip" aria-pressed="' + (cur === t[0]) + '" data-act="' + act + '" data-' + key + '="' + ctx.esc(t[0]) + '">' + t[1] + '</button>').join('') + '</div>';
   }
@@ -52,7 +79,7 @@
     const esc = ctx.esc; const u = unitOf(ctx); const all = wordsOf(ctx, u);
     const weeks = [['All', 'All']].concat(u.weeks.filter((w) => all.some((x) => x.week === w)).map((w) => [w, w]));
     const list = cardList(ctx, p);
-    let h = '<p class="muted small">' + u.emoji + ' Unit: <b>' + esc(u.name) + '</b>' + (ctx.isChild() ? '' : '. Change it in the Theme tab.') + '</p>' + chipRow(ctx, weeks, p.wk, 'pwk', 'w');
+    let h = '<p class="muted small">' + u.emoji + ' Unit: <b>' + esc(u.name) + '</b>' + (ctx.isChild() ? '' : '. Change it in the Theme tab.') + '</p>' + chipRow(ctx, weeks, p.wk, 'pwk', 'w') + voiceRow(ctx);
     if (!list.length) return h + '<div class="card">No words for this week yet.</div>';
     p.i = ((p.i % list.length) + list.length) % list.length;
     const w = list[p.i]; const tl = tlFor(ctx, w); const key = u.id + ':' + w.en; const done = !!ctx.state.fmastered[key];
@@ -63,7 +90,7 @@
       '<p style="font-size:19px">' + esc(w.spidey) + '</p>' +
       '<div class="row" style="justify-content:center"><button class="btn" data-act="pspeak" data-k="en">🔊 English</button>' +
       '<button class="btn coral" data-act="pspeak" data-k="tl">' + tl.flag + ' ' + esc(tl.name) + '</button></div>' +
-      '<p><button class="btn sun" data-act="pspeak" data-k="sp">🕷️ Hear Spidey say it</button></p></div>' +
+      '<p><button class="btn sun" data-act="pspeak" data-k="sp">🕷️ Hear Spidey say it</button></p></div>' + momCard(ctx, w, tl) +
       '<div class="row between"><button class="btn alt" data-act="pnav" data-d="-1" aria-label="Previous word">◀</button>' +
       '<button class="btn ' + (done ? 'sun' : 'alt') + '" style="flex:1" data-act="plearn">' + (done ? '⭐ Learned!' : '☆ Mark learned') + '</button>' +
       '<button class="btn alt" data-act="pnav" data-d="1" aria-label="Next word">▶</button></div>' +
@@ -78,13 +105,13 @@
     return '<div class="chips">' + SA.songDrills.map((d, i) => '<button class="chip" aria-pressed="' + (p.drill === i) + '" data-act="pdrill" data-i="' + i + '">' + d.emoji + ' ' + esc(d.movie) + '</button>').join('') + '</div>' +
       '<div class="card center play-card"><span class="pill">Sound focus: ' + esc(dr.sound) + '</span><p class="small">' + esc(dr.tip) + '</p>' +
       '<div class="big-word" style="margin:14px 0">' + esc(s.say) + '</div><p>👉 ' + esc(s.cue) + '</p>' +
-      '<div class="row" style="justify-content:center"><button class="btn" data-act="psay" data-text="' + esc(s.say) + '">🔊 Listen</button>' +
-      '<button class="btn alt" data-act="psay" data-text="' + esc(s.say) + '" data-slow="1">🐢 Slow</button></div>' +
+      '<div class="row" style="justify-content:center"><button class="btn" data-act="psay" data-plain="1" data-text="' + esc(s.say) + '">🔊 Listen</button>' +
+      '<button class="btn alt" data-act="psay" data-plain="1" data-text="' + esc(s.say) + '" data-slow="1">🐢 Slow</button></div>' +
       '<div class="row between" style="margin-top:14px"><button class="btn alt small" data-act="pstep" data-d="-1"' + (p.step === 0 ? ' disabled' : '') + '>◀</button>' +
       '<span class="small muted">Step ' + (p.step + 1) + ' of ' + dr.steps.length + '</span>' +
       '<button class="btn alt small" data-act="pstep" data-d="1"' + (p.step === dr.steps.length - 1 ? ' disabled' : '') + '>▶</button></div></div>' +
       '<button class="btn ' + (done ? 'sun' : '') + '" style="width:100%" data-act="psong-done">' + (done ? '🎉 Today’s 5 minutes done!' : '✅ We did our 5 minutes') + '</button>' +
-      '<p class="center small muted">Singing days so far: ' + (ctx.state.songDays || []).length + (ctx.isChild() ? '' : '. These are original sound chants inspired by the sounds in her favorite shows, not song lyrics.') + '</p>';
+      '<p class="center small muted">Singing days so far: ' + (ctx.state.songDays || []).length + (ctx.isChild() ? '' : '. These are original sound chants inspired by the sounds in her favorite shows, not song lyrics. Sing drills always use the regular voice so each sound stays clear.') + '</p>';
   };
 
   F.p_story = function (ctx, p) {
@@ -92,7 +119,7 @@
     const w = list[((p.si % list.length) + list.length) % list.length];
     const sentences = [w.en, 'Spidey sees the ' + w.en + '.', 'Spidey sees the big ' + w.en + ' and says, "Wow!"'];
     const fb = u.feelings[p.fi % u.feelings.length];
-    return '<div class="card center play-card"><div class="big-em">' + w.emoji + '</div><div class="small muted">' + esc(w.en) + ' / ' + esc(w.es) + '</div>' +
+    return voiceRow(ctx) + '<div class="card center play-card"><div class="big-em">' + w.emoji + '</div><div class="small muted">' + esc(w.en) + ' / ' + esc(w.es) + '</div>' +
       chipRow(ctx, [[1, '1 word'], [2, 'Short'], [3, 'Longer']].map((x) => [String(x[0]), x[1]]), String(p.lvl), 'plvl', 'n') +
       '<div class="big-word" style="font-size:28px">' + esc(sentences[p.lvl - 1]) + '</div>' +
       '<div class="row" style="justify-content:center"><button class="btn" data-act="psay" data-text="' + esc(sentences[p.lvl - 1]) + '">🔊 Say it</button>' +
@@ -185,7 +212,7 @@
       const r = await fetch('/api/spidey', { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctrl.signal, body: JSON.stringify({ en: w.en, es: w.es, theme: u.name }) });
       clearTimeout(t);
       const data = await r.json();
-      p.ai = data.text || data.error || 'No story line this time.';
+      p.ai = data.text || ('Spidey could not make a new story right now. Try the Short or Longer lines instead!' + (ctx.isChild() || !data.error ? '' : '\n\nFor the grown-up: ' + data.error));
     } catch (e) { p.ai = 'Could not reach the story helper. Everything else still works offline.'; }
     p.busy = false; ctx.render(true);
   }
@@ -194,32 +221,40 @@
   F.handle = function (a, d, ctx) {
     const p = P(ctx); const st = ctx.state; const today = ctx.dkey();
     const cur = () => { const l = cardList(ctx, p); return l.length ? l[((p.i % l.length) + l.length) % l.length] : null; };
+    if (a !== 'mrec' && ctx.rec.active()) ctx.rec.stop(); /* leaving the card ends a recording */
     switch (a) {
+      case 'pvoice': st.charVoice = d.v; ctx.save(); ctx.render(true); say(ctx, 'Hello friends! Let’s learn!', 'en-US'); return true;
+      case 'mplay': ctx.rec.play(d.key); return true;
+      case 'mrec': {
+        if (ctx.rec.active()) { ctx.rec.stop(); return true; }
+        ctx.rec.start(d.key, () => ctx.render(true)).then(() => ctx.render(true));
+        return true;
+      }
       case 'ptab': p.tab = d.t; ctx.render(true); return true;
       case 'pwk': p.wk = d.w; p.i = 0; p.show = false; ctx.render(true); return true;
       case 'pnav': p.i += +d.d; p.show = false; ctx.render(true); return true;
       case 'pspeak': {
         const w = cur(); if (!w) return true; const tl = tlFor(ctx, w);
-        if (d.k === 'en') ctx.speak(w.en, 'en-US');
-        else if (d.k === 'tl') { p.show = true; ctx.render(true); if (!ctx.speak(tl.text, tl.tag)) ctx.toast('No ' + tl.name + ' voice on this device.'); }
-        else ctx.speak(w.spidey, 'en-US');
+        if (d.k === 'en') say(ctx, w.en, 'en-US');
+        else if (d.k === 'tl') { p.show = true; ctx.render(true); if (!say(ctx, tl.text, tl.tag)) ctx.toast('No ' + tl.name + ' voice on this device.'); }
+        else say(ctx, w.spidey, 'en-US');
         return true;
       }
       case 'plearn': { const w = cur(); if (!w) return true; const k = unitOf(ctx).id + ':' + w.en; st.fmastered = st.fmastered || {}; st.fmastered[k] = !st.fmastered[k]; ctx.save(); ctx.render(true); if (st.fmastered[k]) ctx.toast('Learned! ⭐'); return true; }
       case 'pdrill': p.drill = +d.i; p.step = 0; ctx.render(true); return true;
       case 'pstep': p.step = Math.max(0, Math.min(SA.songDrills[p.drill].steps.length - 1, p.step + +d.d)); ctx.render(true); return true;
-      case 'psay': ctx.speak(d.text, tagFor(ctx, d.text), d.slow === '1'); return true;
+      case 'psay': say(ctx, d.text, tagFor(ctx, d.text), d.slow === '1', d.plain === '1'); return true;
       case 'psong-done': st.songDays = st.songDays || []; if (st.songDays.indexOf(today) < 0) { st.songDays.push(today); ctx.save(); ctx.toast('Great singing! +1 ⭐'); } ctx.render(true); return true;
       case 'plvl': p.lvl = +d.n; ctx.render(true); return true;
       case 'pnext-story': p.si += 1; p.ai = ''; ctx.render(true); return true;
       case 'pai': askSpidey(ctx, p); return true;
       case 'pfeel': {
         const u = unitOf(ctx); const fb = u.feelings[p.fi % u.feelings.length]; const ok = d.id === fb.a;
-        p.res = ok ? 'Yes! ' + fb.a + ' / ' + fb.es : 'Hmm, try again!'; ctx.render(true); if (ok) ctx.speak(fb.a, 'en-US'); return true;
+        p.res = ok ? 'Yes! ' + fb.a + ' / ' + fb.es : 'Hmm, try again!'; ctx.render(true); if (ok) say(ctx, fb.a, 'en-US'); return true;
       }
       case 'pfnext': p.fi += 1; p.res = ''; ctx.render(true); return true;
       case 'unit-set': st.unit = d.id; p.wk = 'All'; p.i = 0; p.si = 0; p.fi = 0; p.show = false; p.ai = ''; ctx.save(); ctx.render(true); ctx.toast('Unit: ' + unitOf(ctx).name); return true;
-      case 'uspeak': { const u = unitOf(ctx); const w = wordsOf(ctx, u)[+d.i]; if (w) ctx.speak(w.en, 'en-US'); return true; }
+      case 'uspeak': { const u = unitOf(ctx); const w = wordsOf(ctx, u)[+d.i]; if (w) say(ctx, w.en, 'en-US'); return true; }
       case 'cw-add': {
         const en = (document.getElementById('cwen').value || '').trim(); const es = (document.getElementById('cwes').value || '').trim();
         const emoji = (document.getElementById('cwem').value || '⭐').trim() || '⭐';

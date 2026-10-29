@@ -1180,4 +1180,14 @@
   "emoji": "😠"
  }
 ];
+
+  /* Character-style voices. These only change the pitch and speed of the device's own voice.
+     They are NOT the real show voices. "Regular" is the plain voice. */
+  SA.voices = [
+    { id: 'hero', name: 'Hero', emoji: '🕷️', pitch: 1.35, rate: 1.0 },
+    { id: 'helper', name: 'Silly helper', emoji: '🍌', pitch: 1.9, rate: 1.2 },
+    { id: 'sparkle', name: 'Sparkle', emoji: '✨', pitch: 1.65, rate: 0.95 },
+    { id: 'bear', name: 'Big bear', emoji: '🐻', pitch: 0.55, rate: 0.85 },
+    { id: 'regular', name: 'Regular', emoji: '🙂', pitch: 1.05, rate: 1.0 }
+  ];
 })();
