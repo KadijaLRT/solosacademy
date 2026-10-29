@@ -43,3 +43,26 @@
 
 @media (prefers-reduced-motion: reduce) { .balloon { animation: none; } .rb i { transition: none; } }
 @media (max-width: 360px) { .gbtns { gap: 6px; } .balloon { width: 118px; height: 140px; } .slot, .tile { width: 80px; height: 80px; } }
+
+/* numbers, colors, shapes, counting, singing */
+.gbtns.n4 { grid-template-columns: repeat(2, 1fr); }
+.gbig:nth-child(4n+4) { background: #b9f2c4; }
+.slot { position: relative; }
+.slot.big { width: 112px; height: 112px; }
+.grp { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: 0; font-size: 22px; line-height: 1.15; max-width: 100px; }
+.slot .dg { position: absolute; right: 4px; bottom: 0; font-size: 26px; background: #fff; border: 2px solid var(--ink); border-radius: 10px; padding: 0 7px; line-height: 1.2; }
+.sw { display: block; width: 58px; height: 58px; border-radius: 50%; border: 3px solid var(--ink); box-sizing: border-box; }
+.sw.hollow { background: transparent; border-width: 6px; opacity: .85; }
+.shp { width: 62px; height: 62px; display: block; }
+.shp.shadow { opacity: .28; }
+.balloon .shp { width: 78px; height: 78px; }
+.balloon:has(.shp) { color: var(--ink); }
+.tile.sm, .slot.basket { width: 74px; height: 74px; }
+.tile.sm b.em { font-size: 38px; }
+.slot.basket { width: 100%; max-width: 330px; height: 150px; border-radius: 22px; flex-direction: row; gap: 10px; background: #fff7d6; }
+.bk-items { display: flex; flex-wrap: wrap; justify-content: center; font-size: 30px; line-height: 1.1; max-width: 220px; }
+.bk-n { font-size: 64px !important; color: #3a86ff; text-shadow: 2px 2px 0 var(--ink); min-width: 40px; }
+.clines { margin: 8px 0 10px; }
+.cline { font-size: 22px; font-weight: 800; padding: 5px 12px; margin: 4px 0; border-radius: 14px; border: 3px solid transparent; transition: background .15s, transform .15s; }
+.cline b { font-size: 28px; }
+.cline.on { background: #ffe58a; border-color: var(--ink); transform: scale(1.04); }

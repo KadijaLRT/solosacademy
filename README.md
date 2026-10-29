@@ -1,6 +1,6 @@
 # Solo's Academy
 
-A private learning app for Solo. It runs in Safari on an iPad or iPhone, installs to the home screen, and works offline. There are no accounts, ads, or tracking. Everything is saved on the device. The only thing that uses the internet is the optional Groq story button (see step 4 below).
+A private learning app for Solo, ages 2 to 10. It runs in Safari on an iPad or iPhone, installs to the home screen, and works offline. There are no accounts, ads, or tracking. Everything is saved on the device. The only thing that uses the internet is the optional Groq story button (see step 4 below).
 
 This app merges the earlier Sky Academy app with the Little Learners play features, and uses a retro preschool TV look (Sunny the sun mascot, chunky outlines, polka dots, a "Let's Learn!" opening screen).
 
@@ -45,17 +45,28 @@ This app merges the earlier Sky Academy app with the Little Learners play featur
 
 ## Games tab (for Solana)
 
-The Games tab is the first tab and the opening screen in Solana's view.
+The Games tab is the first tab and the opening screen in Solana's view. The games are original and use ideas common to toddler learning apps (short rounds, big pictures, a friendly voice, a progress reward). Nothing is copied from any other app. A wrong try just wobbles and says "Try again", and nothing is lost.
 
-Original games in the style of toddler alphabet puzzle apps. Nothing is copied from any other app. A wrong try just wobbles and says "Try again", and nothing is lost.
+Five sections, with the games each one has:
 
-- **Pop it!** Five balloons per round. She hears a letter or word and taps the matching balloon.
-- **Match it!** Letters: drag each big letter to its little letter. Unit words: drag each picture to its shadow. She can also tap a piece, then tap its spot.
-- **Build a word:** drag letters into the empty boxes. "1 missing letter" is the easy setting; "Spell it all" is harder. Spelling is always English.
+| Section | Pop it | Match it | Build a word | Count it | Sing it |
+|---|---|---|---|---|---|
+| Letters | yes | big to little letter | yes | | |
+| Numbers (1 to 5 or 1 to 10) | yes | number to its group | | yes | counting chant |
+| Colors | yes | color to its circle | | | |
+| Shapes | yes | shape to its shadow | | | |
+| Unit words | yes | picture to shadow | yes | | chant for each word |
+
+- **Pop it!** Five balloons per round. She hears the letter, number, color, shape, or word and taps the matching balloon.
+- **Match it!** Drag a piece to its match, or tap a piece and then tap its spot.
+- **Count it!** Drag the right number of things into the basket and count out loud with the app.
+- **Sing it!** Short original chants made from the unit word (or counting up to 5 or 10), with a clap button. The chants are not from any existing song.
+- **Build a word:** drag letters into the empty boxes. "1 missing letter" is easy, "Spell it all" is harder. Spelling is always English.
 - **Rainbow:** finishing a game adds a color (and a star). Seven colors make a rainbow, which gives bonus stars. A letter gets a 🌈 after she gets it right 3 times.
-- **Letters or unit words:** the Letters section is English. The unit words section uses the unit you picked in the Theme tab, in English or Spanish.
+- **Language:** Letters are English. Numbers, colors, and shapes are English, or Spanish when her focus language is Spanish. Unit words use English or her focus language.
 - **Letter cards:** tap any letter to see it, hear it, and (in the parent view) record the letter sound in your voice. Phones read single letters aloud as names, so your recorded sound teaches the sound best.
-- **Spoken instructions:** each game explains how to play out loud the first time it starts, and the **How to play** button repeats it any time. There is an on/off switch on the Games screen. Spanish instructions play only when she is practicing Spanish with unit words.
+- **Spoken instructions:** each game explains how to play out loud the first time it starts, and the **How to play** button repeats it any time. There is an on/off switch on the Games screen. Spanish instructions play only when she is practicing Spanish.
+- **Please check:** the Spanish number, color, and shape words and the Spanish chant lines are standard, but ask a Spanish speaker to listen once.
 
 ## Voice pack (recordings between devices)
 
@@ -83,12 +94,13 @@ Settings, **Download backup**. Restore from the same screen. Clearing Safari web
 
 ## Update the app
 
-Re-upload the folder. Change `CACHE` in `sw.js` to a new name each time (for example `solos-academy-v10`), then close and reopen the app twice.
+Re-upload the folder. Change `CACHE` in `sw.js` to a new name each time (for example `solos-academy-v12`), then close and reopen the app twice.
 
 ## Files
 
 - `index.html`, `styles.css`, `retro.css`, `js/app.js`: the app and its looks
 - `js/fun.js`, `js/data-fun.js`: Play tab, units, daily log, sing drills
+- `js/games.js`, `games.css`, `js/data-letters.js`, `js/data-basics.js`: the Games tab (letters, numbers, colors, shapes, counting, chants)
 - `js/parent.js`, `js/data-parent.js`: parent move of the day and the Parent guide
 - `js/data-words.js`, `js/data-english.js`, `js/data-trees.js`, `js/data-pathway.js`: the original Sky Academy content
 - `js/data-water.js`, `js/data-helpers.js`, `js/data-moving.js`, `js/data-buildings.js`: the 6-week plans for the other four units
