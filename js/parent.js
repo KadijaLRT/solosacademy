@@ -1,4 +1,4 @@
-/* Solo's Academy: renders the daily parent move on Today and the Parent guide in Grow. */
+/* Solo's Academy: renders the daily parent move on Today and the Parent guide in Progress. */
 (function () {
   'use strict';
   const SA = window.SA;
@@ -33,12 +33,11 @@
       { id: 'time', e: '🗓️', t: 'Timeline', n: B.timeline.length + ' stops', body: B.timeline.map((t) => say(t.when, t.what)).join('') },
       { id: 'avoid', e: '🚫', t: 'What to avoid', n: G.dont.length + ' things', body: li(G.dont) },
       { id: 'methods', e: '🧩', t: E.title, n: 'Teaching styles', body: '<p>' + esc(E.intro) + '</p><h3>Four approaches that mix well</h3>' + E.approaches.map((x) => '<div class="say"><b>' + esc(x.t) + '</b>: ' + esc(x.d) + '<br><span class="muted small">' + esc(x.app) + '</span></div>').join('') +
-        '<p class="small muted">' + esc(E.attribution) + '</p><h3>Three ways to organize learning</h3>' + E.models.map((x) => say(x.t, x.d)).join('') + '<h3>Three pieces that fit any method</h3>' + E.pieces.map((x) => say(x.t, x.d)).join('') +
+        '<h3>Three ways to organize learning</h3>' + E.models.map((x) => say(x.t, x.d)).join('') + '<h3>Three pieces that fit any method</h3>' + E.pieces.map((x) => say(x.t, x.d)).join('') +
         '<h3>How to notice what fits her</h3>' + li(E.notice) + '<div class="card warn small">' + esc(E.caution) + '</div>' },
       { id: 'gifted', e: '🚀', t: L.title, n: 'Going deeper', body: '<p>' + esc(L.intro) + '</p><h3>Four ideas gifted programs use</h3>' + L.terms.map((x) => say(x.t, x.d)).join('') + '<h3>Three ways a curriculum can be built</h3>' + L.models.map((x) => say(x.t, x.d)).join('') +
-        '<h3>Frameworks and programs to know about</h3>' + L.programs.map((x) => '<div class="say"><b>' + esc(x.t) + '</b><br>' + esc(x.d) + (x.u ? '<br><a href="' + esc(x.u) + '" target="_blank" rel="noopener">Learn more</a>' : '') + '</div>').join('') + '<div class="card warn small">' + esc(L.caution) + '</div>' },
-      { id: 'book', e: '📖', t: 'Book', n: G.books.length + (G.books.length === 1 ? ' pick' : ' picks'), body: G.books.map((b) => '<div class="say"><b>' + esc(b.t) + '</b> by ' + esc(b.by) + '<br>' + esc(b.note) + '<br><a href="' + esc(b.u) + '" target="_blank" rel="noopener">Learn more</a><br><span class="muted small">Check your library for a copy.</span></div>').join('') },
-      { id: 'sources', e: '🔗', t: 'Sources', n: 'Where this comes from', body: '<ul>' + G.sources.concat(B.sources.filter((x) => !G.sources.some((y) => y.u === x.u))).map((x) => '<li><a href="' + esc(x.u) + '" target="_blank" rel="noopener">' + esc(x.t) + '</a></li>').join('') + '</ul><p class="small muted">Checked October 29, 2026. These are parenting ideas, not medical advice.</p>' }
+        '<h3>Frameworks and programs to know about</h3>' + L.programs.map((x) => '<div class="say"><b>' + esc(x.t) + '</b><br>' + esc(x.d) + '</div>').join('') + '<div class="card warn small">' + esc(L.caution) + '</div>' },
+      { id: 'book', e: '📖', t: 'Book', n: G.books.length + (G.books.length === 1 ? ' pick' : ' picks'), body: G.books.map((b) => '<div class="say"><b>' + esc(b.t) + '</b> by ' + esc(b.by) + '<br>' + esc(b.note) + '<br><span class="muted small">Check your library for a copy.</span></div>').join('') },
     ];
   };
   P.safety = function (ctx) { return '<div class="card warn small">' + ctx.esc(SA.parentGuide.safety) + '</div>'; };

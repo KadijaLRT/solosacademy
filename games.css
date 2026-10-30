@@ -91,7 +91,7 @@
 .rb.sm { width: 132px; height: 68px; margin: 0 auto 2px; }
 .rb.sm i { border-width: 7px; }
 .gbtns.secs { margin-top: 6px; }
-.gbtns.n4 .gbig:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.gbtns.n4:not(:has(.pathbig)) .gbig:last-child:nth-child(odd), .gbtns.n4:has(.pathbig) .gbig:last-child:nth-child(even) { grid-column: 1 / -1; }
 .gbig.wide { width: 100%; min-height: 76px; flex-direction: row; gap: 12px; font-size: 18px; margin: 4px 0 10px; background: #fff; }
 .gbig.wide span { font-size: 30px; }
 .srow { padding: 10px 0; border-top: 2px dashed rgba(120, 120, 150, .3); }
@@ -234,3 +234,38 @@ svg.wic-fast{animation:mvFast .45s linear infinite alternate}
 svg.wic-slow{animation:mvFast 7s linear infinite alternate}
 svg.wic-stop{animation:mvStop 1.4s ease-in-out infinite}
 @media (prefers-reduced-motion: reduce){svg.wic-roll,svg.wic-wheel,svg.wic-spin,svg.wic-slide,svg.wic-ramp,svg.wic-falling,svg.wic-push,svg.wic-pull,svg.wic-wagon,svg.wic-fly,svg.wic-wind,svg.wic-kite,svg.wic-swing,svg.wic-bounce,svg.wic-jump,svg.wic-fast,svg.wic-slow,svg.wic-stop{animation:none}}
+
+/* v55: Think it! skill games */
+.sk .skprompt{font-size:24px;font-weight:900;margin:4px 0 10px}
+.skrow{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;margin:10px 0}
+.skrow.opts{margin-top:16px;gap:14px}
+.skdot{display:inline-block;width:46px;height:46px;border-radius:50%;box-shadow:inset -4px -5px 8px rgba(0,0,0,.2),inset 4px 4px 8px rgba(255,255,255,.4);border:3px solid #2b2d5b}
+.skdot.big{width:78px;height:78px}
+.skdot.ask,.skpic.ask{background:#fff;border:3px dashed #2b2d5b;display:inline-flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#2b2d5b;box-shadow:none}
+.skpic{display:inline-block;width:76px;height:76px}
+.skpic svg{width:100%;height:100%}
+.skpic.xl{width:140px;height:140px}
+.skpic.sm{width:44px;height:44px}
+.skpic.ask{border-radius:16px;width:76px;height:76px}
+.skarrow{font-size:22px;color:#2b2d5b}
+.skwords{font-size:22px;font-weight:900;margin-bottom:4px}
+.skopt{border:4px solid #2b2d5b;background:#fff;border-radius:22px;padding:8px;min-width:96px;min-height:96px;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 5px 0 #2b2d5b;cursor:pointer}
+.skopt:active{transform:translateY(3px);box-shadow:0 2px 0 #2b2d5b}
+.skopt.good{background:#2fbf71;border-color:#1a7a43}
+.skopt.no{background:#ffe1c4;border-color:#ff8a3d;animation:skshake .3s}
+.skrow.two .skopt{min-width:140px;min-height:150px;flex-direction:column}
+.skgrp{display:flex;flex-wrap:wrap;gap:2px;justify-content:center;max-width:140px}
+.sktrace{display:flex;justify-content:center}
+.sktrace svg{width:min(78vw,320px);height:min(78vw,320px);background:#fffdf4;border:4px solid #2b2d5b;border-radius:24px;touch-action:none}
+.skguide{fill:none;stroke:#7a8fd8;stroke-width:14;stroke-dasharray:2 14;stroke-linecap:round}
+.skguide.light{stroke-opacity:.45;stroke-width:8}
+.skstart{fill:#2fbf71;stroke:#1a7a43;stroke-width:3}
+.skpath{fill:none;stroke:#e63946;stroke-width:9;stroke-linecap:round;stroke-linejoin:round}
+.skpath.good{stroke:#2fbf71}
+@keyframes skshake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@media (prefers-reduced-motion: reduce){.skopt.no{animation:none}}
+
+.skpic.lg{width:96px;height:96px}
+.skpad{width:92px;height:92px;border-radius:50%;border:5px solid #2b2d5b;box-shadow:inset -6px -8px 12px rgba(0,0,0,.25),inset 6px 6px 12px rgba(255,255,255,.35),0 6px 0 #2b2d5b;cursor:pointer;transition:transform .08s}
+.skpad.lit{transform:scale(1.15);filter:brightness(1.35);box-shadow:0 0 0 8px rgba(255,255,255,.7),0 6px 0 #2b2d5b}
+.skpad:active{transform:scale(.95)}

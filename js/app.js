@@ -19,15 +19,15 @@
   const WBY = {}; S.words.forEach((w) => { WBY[w.id] = w; });
   const CATBY = {}; S.categories.forEach((c) => { CATBY[c.id] = c; });
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-  const APP_VERSION = 48;
+  const APP_VERSION = 58;
   const KID_TABS = [['games', '🎈', 'Games'], ['learn', '📚', 'Learn'], ['feel', '💛', 'Feelings']];
-  const PARENT_TABS = [['today', '🏠', 'Today'], ['learn', '📚', 'Learn'], ['games', '🎈', 'Games'], ['theme', '🏫', 'School'], ['grow', '🚀', 'Grow'], ['act', '🎭', 'Activities']];
+  const PARENT_TABS = [['today', '🏠', 'Today'], ['theme', '🏫', 'School'], ['grow', '🚀', 'Progress'], ['act', '🎭', 'Activities']];
 
   /* ---------- state ---------- */
   function defaults() {
     return {
       v: 1, birth: '', nick: 'Solana', parentName: 'Kadija', role: 'parent', pinHash: '', pinSalt: '', themeStart: '', mode: 'focus', focusLang: 'es', level: 'standard', rate: 0.8,
-      done: {}, learned: {}, said: {}, feelLog: {}, milestones: {}, activities: null, quizStars: 0, onboarded: false,
+      done: {}, learned: {}, said: {}, feelLog: {}, milestones: {}, ageDone: {}, activities: null, quizStars: 0, onboarded: false,
       look: 'retro', charVoice: 'hero', gameStars: 0, rbBands: 0, rainbows: 0, letterWins: {}, unit: 'trees', songDays: [], log: [], customWords: {}, fmastered: {}, homeSetup: {}, unitStarts: {}
     };
   }
@@ -65,11 +65,25 @@
     for (const g of S.growth) { if (a >= g.min && a < g.max) return g; }
     return a >= 12 ? S.growth[S.growth.length - 1] : S.growth[0];
   }
-  function defaultMilestoneBand() {
+  function ageMilestoneBand() {
     const a = ageYears();
     if (a == null || a < 4) return 'm3';
     if (a < 5) return 'm4';
     return 'm5';
+  }
+  function bandPct(id) {
+    const band = S.milestones.find((m) => m.id === id); if (!band || !band.items.length) return 0;
+    return band.items.filter((i) => state.milestones[i.id]).length / band.items.length;
+  }
+  /* She may be ahead of her age: start at her age band, then move up past any band she has mostly checked (75% or more). */
+  function defaultMilestoneBand() {
+    const ids = S.milestones.map((m) => m.id); let i = Math.max(0, ids.indexOf(ageMilestoneBand()));
+    while (i < ids.length - 1 && bandPct(ids[i]) >= 0.75) i += 1;
+    return ids[i];
+  }
+  function milestoneStatus() {
+    const id = ageMilestoneBand(); const band = S.milestones.find((m) => m.id === id);
+    return { id, label: band.label, pct: bandPct(id), ahead: defaultMilestoneBand() !== id };
   }
   function planTheme() { return S.themes.find((t) => t.id === state.unit) || S.themes[0]; }
   function startFor(id) {
@@ -350,7 +364,7 @@
     const sc = $('#starCount'); if (sc) sc.textContent = starTotal();
     const sub = $('#subtitle');
     if (sub) {
-      const seg = { today: 'Today’s flight plan', words: 'Word time!', play: 'Play time!', games: 'Game setup', feel: 'Feelings time', theme: 'Pick our show!', grow: 'Grow', act: 'Activities', settings: 'Settings' }[route()];
+      const seg = { today: 'Today’s flight plan', words: 'Word time!', play: 'Play time!', games: 'Game setup', feel: 'Feelings time', theme: 'Pick our show!', grow: 'Progress', act: 'Activities', settings: 'Settings' }[route()];
       const kidSeg = { learn: 'Learn time!', games: 'Game time!', feel: 'How do you feel?' }[route()];
       if (isChild()) sub.textContent = 'Hi ' + (state.nick || 'friend') + '! ' + (kidSeg || '');
       else sub.textContent = 'Hi ' + (state.parentName || 'there') + '! ' + (seg || '');
@@ -471,6 +485,21 @@
     const sl = ['letters', 'numbers', 'colors', 'shapes', 'words'].map((k, i) => ['🔤', '🔢', '🎨', '🔷', '📖'][i] + ' L' + Math.min(4, lv + ((state.adapt || {})[k] || 0))).join(' ');
     return '<div class="card note"><b>Hello ' + esc(state.parentName || 'there') + ', here’s ' + esc(state.nick || 'her') + '’s progress</b><div class="stats">' + progressLine() + '</div><div class="small">🚀 ' + (age ? esc(age) + ' old' : 'Add her birth month in Settings') + ' · starts at <b>' + L.name + '</b></div><div class="stats">' + sl + '</div></div>';
   }
+  function viewPassport() {
+    let h = '';
+    h += '<div class="grid wide">' + S.langs.map((l) => {
+      const n = learnedCount(l.id); const t = wordsFor(l.id).length; const lv = stampLevel(l.id);
+      return '<button class="stamp ' + (n >= 10 ? 'got' : '') + '" style="font:inherit;color:inherit;text-align:left;cursor:pointer" data-act="wlang" data-lang="' + l.id + '"><span class="fl">' + l.flag + '</span><div style="flex:1"><b>' + l.name + '</b><div class="progress"><i style="width:' + (t ? Math.round(n / t * 100) : 0) + '%"></i></div><span class="small muted">' + n + ' of ' + t + ' learned</span></div><span class="lv" title="' + lv[1] + '">' + lv[0] + '</span></button>';
+    }).join('') + '</div><p class="small muted">Words count when you tap "Learned" on a word card, and automatically when she masters them in her games (3 right answers). Bronze at 10 words, silver at 30, gold at all.</p>';
+    const mws = Array.from(masteredSet()).sort();
+    h += '<div class="card"><b>🎈 Mastered in her games: ' + mws.length + (mws.length === 1 ? ' word' : ' words') + '</b>' +
+      (mws.length ? '<div class="chips" style="flex-wrap:wrap;overflow:visible;margin-top:8px">' + mws.slice(0, 40).map((x) => '<button class="chip" data-act="say-en" data-text="' + esc(x) + '">' + esc(x) + '</button>').join('') + '</div>' + (mws.length > 40 ? '<p class="small muted">Showing 40 of ' + mws.length + '.</p>' : '')
+        : '<p class="small muted">Nothing yet. A word shows here after she answers it right 3 times in Games.</p>') + '</div>';
+    return h;
+  }
+  function viewSkills() {
+    return '<div class="card"><p class="small">Solana plays these in Games, under Think it! They get harder by themselves as she answers more.</p></div>' + S.skills.info.map((x) => '<div class="card"><div class="row between"><b>' + esc(x.name) + '</b><span class="pill">Level ' + (S.skills.levelOf(ctx, x.id) + 1) + '</span></div><p class="small" style="margin:6px 0 2px">' + esc(x.skill) + '</p><span class="small muted keep">' + S.skills.winsOf(ctx, x.id) + ' right answers so far</span></div>').join('');
+  }
   function viewToday() {
     const info = themeInfo(); const ids = LEVELS[state.level] || LEVELS.standard;
     const today = state.done[dkey()] || {};
@@ -484,13 +513,9 @@
       '<div class="runway"><div class="line"></div><div class="plane" style="left:' + (total ? (8 + (doneN / total) * 84) : 8) + '%">✈️</div></div>' +
       '<div class="row between small"><span>' + doneN + ' of ' + total + ' stops done &middot; about ' + mins + ' min</span><span>' + weeklyActiveDays() + ' of 7 days active</span></div></div>';
     h += '<div class="card"><div class="row between"><b>🏫 This week at school</b><button class="btn alt small" data-act="go" data-to="theme">School tab</button></div><div class="chips" style="margin-top:8px">' + (info.week.words || []).slice(0, 8).map((w) => '<span class="pill">' + esc(w) + '</span>').join('') + '</div></div>';
-    if (state.unit && !S.themes.some((t) => t.id === state.unit)) { const un = S.units.find((x) => x.id === state.unit); if (un) h += '<div class="card note">Today’s show is <b>' + un.emoji + ' ' + esc(un.name) + '</b>. Learn and Games use its words.' + (un.school ? ' This daily plan still follows Trees until a plan for ' + esc(un.name) + ' is added.' : ' It is an open topic, so there is no school plan. The daily plan below still follows Trees as her school support.') + '</div>'; }
+    h += ageTodayCard();
     if (info.over) h += '<div class="card note">The 6 ' + esc(info.th.name.toLowerCase()) + ' weeks are complete. You can repeat week 6, or ask her teacher for the next theme. See the School tab.</div>';
     if (info.pre) h += '<div class="card note">Your theme starts on ' + esc(startFor(info.th.id)) + '. This is a preview of week 1.</div>';
-    const nextId = ids.find((b) => !today[b]);
-    if (nextId) h += '<div class="card good nextstop"><b>👉 Next stop</b><div>' + BLOCKS[nextId].e + ' ' + BLOCKS[nextId].t + ' · ' + BLOCKS[nextId].m + ' min</div></div>';
-    h += '<div class="card note small">👧 <b>In her view:</b> Learn, then Today. She sees these same stops as big pictures. Feelings, Talk, Words, Story and Numbers open the matching activity for her; Move and Make wait for you to do them together. Ticks show on both screens.</div>';
-    h += stageCard();
     h += S.parent.moveCard(ctx, info.diff);
     ids.forEach((b) => {
       const m = BLOCKS[b]; const isDone = !!today[b]; const id = 'blk-' + b;
@@ -498,14 +523,6 @@
         '<button class="check" data-act="toggle-block" data-b="' + b + '" aria-label="Mark ' + m.t + ' done" aria-pressed="' + isDone + '">' + (isDone ? '✓' : '') + '</button></summary><div class="b-body">' + blockBody(b, info) + '</div></details>';
     });
     if (doneN === total && total) h += '<div class="card good center"><div style="font-size:40px">🎉</div><b>Landed! All stops done today.</b><p class="muted small">Big hug. Then free play, no agenda.</p></div>';
-    h += '<h2>Language passport</h2><div class="grid wide">' + S.langs.map((l) => {
-      const n = learnedCount(l.id); const t = wordsFor(l.id).length; const lv = stampLevel(l.id);
-      return '<button class="stamp ' + (n >= 10 ? 'got' : '') + '" style="font:inherit;color:inherit;text-align:left;cursor:pointer" data-act="wlang" data-lang="' + l.id + '"><span class="fl">' + l.flag + '</span><div style="flex:1"><b>' + l.name + '</b><div class="progress"><i style="width:' + (t ? Math.round(n / t * 100) : 0) + '%"></i></div><span class="small muted">' + n + ' of ' + t + ' learned</span></div><span class="lv" title="' + lv[1] + '">' + lv[0] + '</span></button>';
-    }).join('') + '</div><p class="small muted">Words count when you tap "Learned" on a word card, and automatically when she masters them in her games (3 right answers). Bronze at 10 words, silver at 30, gold at all.</p>';
-    const mws = Array.from(masteredSet()).sort();
-    h += '<div class="card"><b>🎈 Mastered in her games: ' + mws.length + (mws.length === 1 ? ' word' : ' words') + '</b>' +
-      (mws.length ? '<div class="chips" style="flex-wrap:wrap;overflow:visible;margin-top:8px">' + mws.slice(0, 40).map((x) => '<button class="chip" data-act="say-en" data-text="' + esc(x) + '">' + esc(x) + '</button>').join('') + '</div>' + (mws.length > 40 ? '<p class="small muted">Showing 40 of ' + mws.length + '.</p>' : '')
-        : '<p class="small muted">Nothing yet. A word shows here after she answers it right 3 times in Games.</p>') + '</div>';
     return h;
   }
 
@@ -540,7 +557,7 @@
   function viewLearn() {
     const mode = ui.learnMode || 'play';
     const chips = '<div class="chips">' + [['play', '🎬 Topic play'], ['bank', '🗣️ Word bank']].map((t) => '<button class="chip" aria-pressed="' + (mode === t[0]) + '" data-act="learn-mode" data-m="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>';
-    return chips + (mode === 'bank' ? viewWords() : S.fun.viewPlay(ctx));
+    return chips + (mode === 'bank' ? viewWords() : S.fun.viewPlay(ctx)) + '<div class="card"><details class="acc" data-id="roadmap"' + (ui.openDetails.roadmap ? ' open' : '') + '><summary>🌟 Age activities (Roadmap to 10)</summary><div class="acc-body">' + growMap() + '</div></details></div>';
   }
   function viewEnglish() {
     let h = '<p class="muted">Clear talking and a growing vocabulary. Tap a word to see how to say it, then build it into a sentence.</p>';
@@ -647,7 +664,7 @@
     return '<div class="row" style="justify-content:space-between">' + out.join('') + '</div>';
   }
   function viewFeel() {
-    let h = '<h2>Feelings toolkit</h2><p class="muted">Name it, breathe, then solve it. CDC parent tips for age 3 include giving her words for her feelings and teaching her to take deep breaths, hug a favorite toy, or go to a quiet, safe place.</p>';
+    let h = '<h2>Feelings toolkit</h2><p class="muted">Name it, breathe, then solve it. Give her words for her feelings, and teach her to take deep breaths, hug a favorite toy, or go to a quiet, safe place.</p>';
     h += '<div class="grid g3">' + S.feelings.map((f) => '<button class="feel-card" style="background:' + f.color + '33" data-act="feel-open" data-id="' + f.id + '"><span class="em">' + f.e + '</span>' + f.name + '</button>').join('') + '</div>';
     h += '<div class="card"><b>This week</b>' + recentFeelings() + '</div>';
     h += '<h2>✈️ Airplane breathing</h2><div class="card breath"><div class="plane" id="bplane">✈️</div><div class="count" id="bcount">Ready for takeoff?</div><button class="btn" data-act="breath-start">Start 3 flights</button></div>';
@@ -677,7 +694,8 @@
 
   /* ---------- THEME ---------- */
   function viewTheme() {
-    const chips = '<h2>School</h2>' + S.fun.unitChips(ctx);
+    const cu = S.units.find((u) => u.id === state.unit) || S.units[0];
+    const chips = '<h2>School</h2><details class="acc" data-id="unitpick"' + (ui.openDetails.unitpick ? ' open' : '') + '><summary>' + cu.emoji + ' ' + esc(cu.name) + ' (tap to change topic)</summary><div class="acc-body">' + S.fun.unitChips(ctx) + '</div></details>';
     if (!S.themes.some((t) => t.id === state.unit)) return chips + S.fun.unitPage(ctx);
     return chips + viewPlan();
   }
@@ -690,17 +708,17 @@
     const fmt = (d) => MONTHS[d.getMonth()] + ' ' + d.getDate();
     const lang = chosenLang(); const L = LBY[lang];
     let h = '<h2>' + th.emoji + ' ' + esc(th.name) + ' theme</h2><p class="muted">Matched to what her class is doing for the next 6 weeks. If her teacher shifts the plan, change the start date in Settings.</p>';
-    h += '<div class="chips">' + th.weeks.map((w, i) => '<button class="chip" aria-pressed="' + (ui.tweek === i) + '" data-act="tweek" data-n="' + i + '">Week ' + (i + 1) + (i === info.n ? ' (now)' : '') + '</button>').join('') + '</div>';
+    h += '<div class="chips" style="flex-wrap:wrap;overflow:visible">' + th.weeks.map((w, i) => '<button class="chip" aria-pressed="' + (ui.tweek === i) + '" data-act="tweek" data-n="' + i + '">Week ' + (i + 1) + (i === info.n ? ' (now)' : '') + '</button>').join('') + '</div>';
     h += '<div class="card hero"><b style="font-size:20px">' + esc(wk.title) + '</b><div class="muted small">' + fmt(ws) + ' to ' + fmt(we) + '</div><p>' + esc(wk.focus) + '</p></div>';
     h += '<div class="card"><b>Words to learn this week</b><div class="chips" style="flex-wrap:wrap;overflow:visible">' + wk.words.map((w) => '<button class="chip" data-act="say-en" data-text="' + esc(w) + '">🔊 ' + esc(w) + '</button>').join('') + '</div></div>';
     const inTheme = (w) => (th.langIds ? th.langIds.indexOf(w.id) >= 0 : w.c === th.langCategory);
     const tw = wordsFor(lang).filter(inTheme);
-    h += '<details class="acc" open><summary>' + L.flag + ' ' + esc(th.langLabel || (th.name + ' words')) + ' in ' + esc(L.name) + '</summary><div class="acc-body">' + tw.map((w) => wordRow(lang, w)).join('') + '<p class="small muted">Change the language in Settings, or compare all six below.</p></div></details>';
+    h += '<details class="acc"><summary>' + L.flag + ' ' + esc(th.langLabel || (th.name + ' words')) + ' in ' + esc(L.name) + '</summary><div class="acc-body">' + tw.map((w) => wordRow(lang, w)).join('') + '<p class="small muted">Change the language in Settings, or compare all six below.</p></div></details>';
     const all = S.words.filter(inTheme);
     h += '<details class="acc"><summary>🌍 All six languages side by side</summary><div class="acc-body scroll-x"><table class="tbl"><tr><th></th>' + all.map((w) => '<th>' + w.e + ' ' + w.en + '</th>').join('') + '</tr>' +
       S.langs.map((l) => '<tr><td><b>' + l.flag + '</b></td>' + all.map((w) => '<td class="' + (l.dir === 'rtl' ? 'rtl' : '') + '">' + (w[l.id] ? '<button class="cell" data-act="open-card" data-lang="' + l.id + '" data-id="' + w.id + '">' + esc(w[l.id][0]) + '</button>' : '<span class="muted">n/a</span>') + '</td>').join('') + '</tr>').join('') + '</table></div></details>';
     const sec = (t, arr, open) => '<details class="acc"' + (open ? ' open' : '') + '><summary>' + t + '</summary><div class="acc-body"><ul>' + arr.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div></details>';
-    h += sec('📚 Books', wk.books, true) + sec('🎵 Songs', wk.songs) + sec('🤸 Move', wk.movement) + sec('🕷️ Spidey and airplane play', wk.hero) + sec('🎨 Make', wk.craft) + sec('🔬 Discover', wk.science) +
+    h += sec('📚 Books', wk.books) + sec('🎵 Songs', wk.songs) + sec('🤸 Move', wk.movement) + sec('🕷️ Spidey and airplane play', wk.hero) + sec('🎨 Make', wk.craft) + sec('🔬 Discover', wk.science) +
       sec('🔢 Count and sort', wk.math) + sec('💛 Feelings and friends', wk.sel) + sec('❓ Questions to ask', wk.questions);
     h += '<div class="card note"><b>Talk to her teacher:</b> ' + esc(wk.teacherAsk) + '</div>';
     h += '<div class="card warn small">' + esc(th.safety) + '</div>';
@@ -727,8 +745,8 @@
     const band = S.milestones.find((m) => m.id === ui.mband);
     const done = band.items.filter((i) => state.milestones[i.id]).length;
     let h = '<div class="chips">' + S.milestones.map((m) => '<button class="chip" aria-pressed="' + (ui.mband === m.id) + '" data-act="mband" data-id="' + m.id + '">' + m.label + '</button>').join('') + '</div>';
-    h += '<div class="card"><div class="row between"><b>' + done + ' of ' + band.items.length + ' checked</b><a href="' + band.url + '" target="_blank" rel="noopener">CDC list</a></div><div class="progress"><i style="width:' + Math.round(done / band.items.length * 100) + '%"></i></div>' +
-      '<p class="small muted">These are skills most children (75% or more) show by this age. Check one when you have seen her do it, not as a test. Source: ' + esc(band.source) + '.</p></div>';
+    h += '<div class="card"><div class="row between"><b>' + done + ' of ' + band.items.length + ' checked</b></div><div class="progress"><i style="width:' + Math.round(done / band.items.length * 100) + '%"></i></div>' +
+      '<p class="small muted">These are skills most children (75% or more) show by this age. Check one when you have seen her do it, not as a test..</p></div>';
     const cats = []; band.items.forEach((i) => { if (cats.indexOf(i.cat) < 0) cats.push(i.cat); });
     cats.forEach((c) => {
       h += '<h3>' + esc(c) + '</h3><div class="card">' + band.items.filter((i) => i.cat === c).map((i) =>
@@ -737,12 +755,37 @@
     h += '<div class="card warn"><b>When to act</b><p>' + esc(S.actEarly) + '</p></div>';
     return h;
   }
+  /* Age activities: the roadmap turned into things to do. She is matched to her age band, or the next one up when her milestones show she is ahead. */
+  function ageBandNow() {
+    const cur = growthBand(); const i = S.growth.findIndex((x) => x.id === cur.id);
+    const ahead = milestoneStatus().ahead && i < S.growth.length - 1;
+    return { band: ahead ? S.growth[i + 1] : cur, ahead };
+  }
+  function ageKey(gid, area, i) { return gid + '|' + area + '|' + i; }
+  function ageDoneHtml(k) {
+    const d = (state.ageDone || {})[k];
+    return '<button class="check" data-act="age-done" data-k="' + esc(k) + '" aria-label="Mark done" aria-pressed="' + !!d + '">' + (d ? '✓' : '') + '</button>';
+  }
+  function todayAge() {
+    const nb = ageBandNow(); const set = (S.ageGames || {})[nb.band.id]; if (!set) return null;
+    const list = []; Object.keys(set).forEach((area) => set[area].forEach((x, i) => list.push({ area, x, k: ageKey(nb.band.id, area, i) })));
+    if (!list.length) return null;
+    const day = Math.floor(new Date(dkey() + 'T12:00:00').getTime() / 86400000);
+    return Object.assign({ nb }, list[((day % list.length) + list.length) % list.length]);
+  }
+  function ageTodayCard() {
+    const t = todayAge(); if (!t) return '';
+    return '<div class="card"><div class="row between"><b>🌟 Try today (' + esc(t.nb.band.range) + ')</b>' + ageDoneHtml(t.k) + '</div><p style="margin:6px 0 2px"><b>' + esc(t.x.t) + '</b> · ' + t.x.m + ' min<br><span class="muted">' + esc(t.x.d) + '</span></p>' +
+      '<button class="btn alt small" data-act="go" data-to="learn">More age activities</button></div>';
+  }
   function growMap() {
-    const cur = growthBand(); const gid = ui.gband || cur.id; const g = S.growth.find((x) => x.id === gid) || cur;
+    const nb = ageBandNow(); const cur = nb.band; const gid = ui.gband || cur.id; const g = S.growth.find((x) => x.id === gid) || cur;
     let h = '<div class="chips">' + S.growth.map((x) => '<button class="chip" aria-pressed="' + (x.id === g.id) + '" data-act="gband" data-id="' + x.id + '">' + esc(x.range.replace('Ages ', '').replace('Age ', '')) + (x.id === cur.id ? ' ⭐' : '') + '</button>').join('') + '</div>';
-    h += '<div class="card hero"><b style="font-size:20px">' + esc(g.range) + '</b> <span class="pill">' + esc(g.grade) + '</span>' + (g.id === cur.id ? ' <span class="pill green">Now</span>' : '') + '</div>';
-    const AIC = { 'English and talking': '🗣️', 'Reading and writing': '📖', 'Math': '🔢', 'Science and thinking': '🔬', 'Second language': '🌍', 'Feelings and friends': '💛', 'Body and movement': '🤸', 'Art and music': '🎨' };
-    h += '<div class="grid g2">' + Object.keys(g.areas).map((a) => '<details class="card area"><summary><span class="area-em">' + (AIC[a] || '🌱') + '</span><b>' + esc(a) + '</b></summary><p class="small">' + esc(g.areas[a]) + '</p></details>').join('') + '</div>';
+    h += '<div class="card hero"><b style="font-size:20px">' + esc(g.range) + '</b> <span class="pill">' + esc(g.grade) + '</span>' + (g.id === cur.id ? ' <span class="pill green">' + (nb.ahead ? 'Matched: she is ahead' : 'Now') + '</span>' : '') + '</div>';
+    const AIC = { 'English and talking': '🗣️', 'Reading and writing': '📖', 'Math and thinking': '🔢', 'Math': '🔢', 'Science and thinking': '🔬', 'Second language (my target)': '🌍', 'Second language': '🌍', 'Feelings and friends': '💛', 'Body': '🤸', 'Body and movement': '🤸', 'Art and music': '🎨' };
+    const set = (S.ageGames || {})[g.id] || {};
+    h += Object.keys(g.areas).map((a) => '<details class="card area" data-id="age-' + g.id + '-' + esc(a) + '"' + (ui.openDetails['age-' + g.id + '-' + a] ? ' open' : '') + '><summary><span class="area-em">' + (AIC[a] || '🌱') + '</span><b>' + esc(a) + '</b></summary><p class="small muted keep">' + esc(g.areas[a]) + '</p>' +
+      (set[a] || []).map((x, i) => '<div class="row between" style="gap:10px;padding:8px 0;border-top:1px solid var(--line)"><div><b>' + esc(x.t) + '</b> <span class="small muted keep">' + x.m + ' min</span><div class="small">' + esc(x.d) + '</div></div>' + ageDoneHtml(ageKey(g.id, a, i)) + '</div>').join('') + '</details>').join('');
     return h;
   }
   function growLevels() {
@@ -762,27 +805,26 @@
     }
     return '<div class="grid g2">' + secs.map((x) => '<button class="gtile" data-act="grsec" data-id="' + x.id + '"><span class="gt-em">' + x.e + '</span><b>' + esc(x.t) + '</b><span class="gt-st">' + esc(x.n) + '</span></button>').join('') + '</div>' + S.parent.safety(ctx);
   }
-  const GTITLES = { miles: ['✅', 'Milestones'], feels: ['💛', 'Feelings'], log: ['📈', 'Daily log'], map: ['🗺️', 'Roadmap to 10'], guide: ['🌱', 'Parent guide'], levels: ['🚀', 'Her levels'] };
+  const GTITLES = { feels: ['💛', 'Feelings'], log: ['📈', 'Daily log'], guide: ['🌱', 'Parent guide'], pass: ['🛂', 'Language passport'], skills: ['🧠', 'Skill games'], levels: ['🚀', 'Her levels'] };
   function viewGrow() {
     const t = GTITLES[ui.gtab] ? ui.gtab : 'hub';
     if (t === 'hub') {
-      const mb = S.milestones.find((m) => m.id === (ui.mband || defaultMilestoneBand())); const md = mb.items.filter((i) => state.milestones[i.id]).length;
       const f = S.feelings.find((x) => x.id === (state.feelLog || {})[dkey()]);
       const tip = S.parent.todayMove(themeInfo().diff).m.t; const lv = S.stage.level(state);
-      return '<h2>Grow</h2><div class="grid g2">' +
+      return '<h2>Progress</h2><div class="grid g2">' +
+        gTile('pass', S.ic('words'), 'Language passport', masteredSet().size + ' words mastered in games') +
+        gTile('skills', S.picSvg ? S.picSvg('brain') : '🧠', 'Skill games', S.skills.info.reduce((n, x) => n + S.skills.winsOf(ctx, x.id), 0) + ' right answers') +
         gTile('levels', S.ic('grow'), 'Her levels', 'Level ' + lv + (S.stage.ageText(state) ? ' · ' + esc(S.stage.ageText(state)) : '')) +
-        gTile('miles', S.ic('check'), 'Milestones', md + ' of ' + mb.items.length + ' · ' + esc(mb.label.toLowerCase())) +
         gTile('feels', S.ic('heart'), 'Feelings', f ? 'Today: ' + esc(f.name) : 'None today') +
         gTile('log', S.ic('chart'), 'Daily log', (state.log || []).length + ' entries') +
-        gTile('map', S.ic('map'), 'Roadmap to 10', 'Now: ' + esc(growthBand().range)) +
         gTile('guide', S.ic('sprout'), 'Parent guide', esc(tip)) + '</div>';
     }
-    const head = '<div class="gback"><button class="btn alt small" data-act="gtab" data-t="hub">◀ Grow</button><b>' + GTITLES[t][0] + ' ' + GTITLES[t][1] + '</b></div>';
-    if (t === 'miles') return head + growMilestones();
+    const head = '<div class="gback"><button class="btn alt small" data-act="gtab" data-t="hub">◀ Progress</button><b>' + GTITLES[t][0] + ' ' + GTITLES[t][1] + '</b></div>';
     if (t === 'feels') return head + growFeelings();
     if (t === 'log') return head + S.fun.viewLog(ctx);
-    if (t === 'map') return head + growMap();
     if (t === 'levels') return head + growLevels();
+    if (t === 'pass') return head + viewPassport();
+    if (t === 'skills') return head + viewSkills();
     return (ui.gsec ? '' : head) + growGuide();
   }
   /* ---------- ACTIVITIES ---------- */
@@ -810,7 +852,7 @@
     return '<div class="card warn"><b>➕ ' + label + '</b><div>Nothing up next yet.</div></div>';
   }
   function viewAct() {
-    let h = '<h2>Activities</h2><p class="muted">Goal: one sport and one art at all times. There is no limit on how many she can try.</p><div class="card note small">👧 <b>In her view:</b> Learn, then My day. Anything marked Active now or Next up shows there, and she hears it read aloud.</div>';
+    let h = '<h2>Activities</h2><p class="muted">Goal: one sport and one art at all times. There is no limit on how many she can try.</p>';
     h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' + goalTile('sport', 'Sport') + goalTile('art', 'Art') + '</div>';
     const order = ['active', 'next', 'planned', 'paused', 'done'];
     const list = state.activities.slice().sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status));
@@ -818,7 +860,7 @@
     h += list.map((a) => '<div class="card"><div class="row between"><div><b style="font-size:19px">' + (a.type === 'sport' ? '🏅' : a.type === 'art' ? '🎭' : '⭐') + ' ' + esc(a.name) + '</b> <span class="pill ' + STATUS[a.status][1] + '">' + STATUS[a.status][0] + '</span>' +
       (whenText(a) ? '<div class="muted small">' + esc(whenText(a)) + '</div>' : '') + '</div><button class="btn alt small" data-act="act-open" data-id="' + esc(a.id) + '">Edit</button></div>' +
       (a.note ? '<p class="small">' + esc(a.note) + '</p>' : '') + (a.lang ? '<p class="small muted">🌍 ' + esc(a.lang) + '</p>' : '') + '</div>').join('');
-    h += '<h2>Ideas</h2>' + S.activityIdeas.map((x, i) => '<div class="card"><div class="row between"><div><b>' + esc(x.name) + '</b> <span class="pill">' + esc(x.type) + '</span><div class="small muted">' + esc(x.why) + '</div></div><button class="btn alt small" data-act="act-idea" data-i="' + i + '">Add</button></div></div>').join('');
+    h += '<details class="acc" data-id="act-ideas"' + (ui.openDetails['act-ideas'] ? ' open' : '') + '><summary>💡 Ideas to add</summary><div class="acc-body">' + S.activityIdeas.map((x, i) => '<div class="card"><div class="row between"><div><b>' + esc(x.name) + '</b> <span class="pill">' + esc(x.type) + '</span><div class="small muted">' + esc(x.why) + '</div></div><button class="btn alt small" data-act="act-idea" data-i="' + i + '">Add</button></div></div>').join('') + '</div></details>';
     h += '<div class="card note small"><b>Safety notes.</b> Ask every program about its minimum age, coach-to-child ratio, and safety rules. For riding, use a certified riding helmet (ASTM/SEI) and ask the stable how they match horses and lessons to small children. For water, an adult stays within arm’s reach.</div>';
     return h;
   }
@@ -855,16 +897,16 @@
     hs += '<div class="card"><b>📖 Story character</b><p class="small muted">Who stars in the word lines and the story. Spidey is the default.</p><div class="chips">' + S.fun.heroes.map((h) => '<button class="chip" aria-pressed="' + ((state.hero || 'spidey') === h[0]) + '" data-act="hero-set" data-id="' + h[0] + '">' + h[1] + ' ' + esc(h[2] || state.nick || 'Solana') + '</button>').join('') + '</div></div>';
     hs += '<div class="card"><b>🌳 Class unit</b><label class="f" for="s-theme">' + esc(planTheme().name) + ' start date</label><input type="date" id="s-theme" data-set="themeStart" value="' + esc(startFor(planTheme().id)) + '">' +
       '<p class="small muted">Change the unit itself in the School tab.</p></div>';
-    hs += '<div class="card"><b>🎈 Games and levels</b><p class="small muted">What she plays, her start level, and practice live in Game settings.</p><p style="margin-bottom:0"><button class="btn" data-act="go" data-to="games">Open Game settings</button></p></div>';
     hs += '<div class="card"><b>🎨 How her screens look</b><label class="f">Style</label>' + sel('look', [['retro', 'Retro preschool TV everywhere (default)'], ['mixed', 'Retro for kid screens only'], ['classic', 'Classic calm look']]) +
       '<p class="small muted">Kid screens are Games, Learn, and Feelings. Parent screens keep the calm look in the middle option.</p></div>';
     hs += '<div class="card"><b>Voice pack (send recordings and game settings to another device)</b><p class="small muted">Your voice clips and Game setup choices live on this device only. To put them on Solana’s device: 1. Tap Make voice pack here. 2. Tap Share and send it to her device (AirDrop or Messages). 3. On her device, switch to the grown-up view, open Settings, tap Import, and pick the file. This device has ' + recSet.size + (recSet.size === 1 ? ' recording' : ' recordings') + '. The file stays between your own devices.</p>' +
       '<div class="row"><button class="btn alt" data-act="pack-make">' + (ui.pack ? 'Make it again' : 'Make voice pack') + '</button><label class="btn alt" style="display:inline-flex;align-items:center;cursor:pointer">Import<input id="packFile" type="file" accept="application/json,.json" hidden></label></div>' +
       (ui.pack ? '<p class="small">' + 'Ready: ' + ui.pack.n + (ui.pack.n === 1 ? ' recording' : ' recordings') + ' and your game settings.' + '</p>' + '<div class="row"><button class="btn sun" data-act="pack-share">📤 Share</button><button class="btn alt" data-act="pack-save">⬇ Save file</button></div>' : '') + '</div>';
     /* My settings */
+    hm += '<div class="card"><b>Learn and game settings</b><div class="row" style="gap:8px;margin-top:8px"><button class="btn" data-act="go" data-to="games">🎈 Game settings</button><button class="btn alt" data-act="go" data-to="learn">📚 Learn tools</button></div></div>';
     hm += '<div class="card"><b>👤 About me</b><label class="f" for="s-me">Your name (shown on your screen)</label><input type="text" id="s-me" data-set="parentName" value="' + esc(state.parentName) + '" maxlength="30" autocomplete="off"></div>';
     hm += '<div class="card"><b>📅 My daily plan</b><label class="f">Daily time</label>' + sel('level', [['light', 'Light, about 17 min'], ['standard', 'Standard, about 22 min'], ['stretch', 'Stretch, about 32 min']]) +
-      '<p class="small muted">Short, playful sessions work best at this age, with conversation all day long. The CDC lists attention for 5 to 10 minutes as a milestone at age 5.</p>' +
+      '<p class="small muted">Short, playful sessions work best at this age, with conversation all day long. By age 5, expect her to focus for about 5 to 10 minutes.</p>' +
       '<label class="f">Less reading</label>' + sel('lite', [['on', 'On: tap ⓘ for details'], ['off', 'Off: show all text']]) + '</div>';
     hm += '<div class="card"><b>Profiles</b><p class="small muted">Two views on this device: the parent view (everything) and ' + esc(state.nick || 'your child') + '’s view (Games, Learn, Feelings). A PIN keeps the parent view closed when you switch to the child view. It is a child lock, not strong security, and both views share the same saved progress on this device.</p>' +
       '<p>Parent PIN: <b>' + (state.pinHash ? 'set' : 'not set') + '</b></p><div class="row"><button class="btn small" data-act="pin-set-open">' + (state.pinHash ? 'Change PIN' : 'Set a PIN') + '</button>' + (state.pinHash ? '<button class="btn alt small" data-act="pin-remove">Remove PIN</button>' : '') + '</div>' +
@@ -888,7 +930,7 @@
 
   /* ---------- router ---------- */
   const ctx = {
-    S, ui, esc, speak, toast, dkey, LBY, starTotal, isChild,
+    S, ui, esc, speak, toast, dkey, LBY, starTotal, isChild, milestonesHtml: growMilestones, roadmapHtml: growMap, milestoneStatus,
     /* Parent recordings for the Learn tab. Keys look like mom:unit:word:lang. */
     rec: {
       has: (k) => recSet.has(k),
@@ -910,13 +952,14 @@
     save: () => save(),
     render: (k) => render(k)
   };
-  const ROUTES = { today: viewToday, learn: () => (isChild() ? S.kid.view(ctx, 'learn') : viewLearn()), games: () => S.games.view(ctx), feel: () => (isChild() ? S.kid.view(ctx, 'feel') : viewFeel()), theme: viewTheme, grow: viewGrow, act: viewAct, settings: viewSettings };
+  const ROUTES = { today: viewToday, learn: () => (isChild() ? S.kid.view(ctx, 'learn') : toolsBack() + viewLearn()), games: () => (isChild() ? S.games.view(ctx) : toolsBack() + S.games.view(ctx)), feel: () => (isChild() ? S.kid.view(ctx, 'feel') : viewFeel()), theme: viewTheme, grow: viewGrow, act: viewAct, settings: viewSettings };
   const KID_ROUTES = ['learn', 'games'];
   function applyLook(r) {
     const un = S.units.find((x) => x.id === state.unit) || S.units[0];
     document.body.className = 'look-' + (state.look || 'retro') + ((isChild() || KID_ROUTES.indexOf(r) >= 0) ? ' kid' : '');
     document.body.style.setProperty('--u1', un.c1); document.body.style.setProperty('--u2', un.c2);
   }
+  function toolsBack() { return '<div class="gback"><button class="btn alt small" data-act="go" data-to="settings">◀ Settings</button></div>'; }
   function route() {
     let r = (location.hash || '').replace('#/', '');
     if (r === 'words' || r === 'play') { ui.learnMode = r === 'words' ? 'bank' : 'play'; r = 'learn'; try { history.replaceState(null, '', '#/learn'); } catch (e) { /* ignore */ } }
@@ -932,6 +975,7 @@
   function liteify() {
     $$('#view p.muted, #view p.small.muted').forEach((el) => {
       if (el.closest('details, .modal, .keep') || el.dataset.keep) return;
+      if ((el.textContent || '').length < 90) return;
       el.classList.add('lite-hide');
       const b = document.createElement('button'); b.type = 'button'; b.className = 'info'; b.dataset.act = 'info'; b.setAttribute('aria-label', 'Show more info'); b.textContent = 'ⓘ';
       el.parentNode.insertBefore(b, el);
@@ -1022,6 +1066,7 @@
       case 'grsec': ui.gsec = d.id || null; render(true); break;
       case 'gband': ui.gband = d.id; render(false); break;
       case 'mband': ui.mband = d.id; render(true); break;
+      case 'age-done': state.ageDone = state.ageDone || {}; if (state.ageDone[d.k]) delete state.ageDone[d.k]; else state.ageDone[d.k] = dkey(); save(); render(true); break;
       case 'act-open': openActivity(d.id || null); break;
       case 'act-save': {
         const name = $('#aname').value.trim(); if (!name) { toast('Please add a name'); break; }

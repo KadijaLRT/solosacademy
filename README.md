@@ -15,13 +15,13 @@ This app merges the earlier Sky Academy app with the Little Learners play featur
 - **Feelings**: a toolkit with six feelings in six languages, airplane breathing, calm-down tools, and scripts for hard moments.
 - **School**: pick the unit. All five units (Trees, Water, Community Helpers, How Things Move, Buildings) have a full 6-week daily plan: weekly words, books, songs, movement, Spidey and airplane play, crafts, science, number play, feelings, and questions. The Today tab follows the selected unit, and each unit keeps its own start date (Settings). You can add your own words to any unit.
 - **Parent move of the day** (on Today): one small, research-backed habit each day (serve and return, notice and adapt, talking it through, real-life jobs, praising effort, open-ended play, music and rhythm, moving outdoors, her own choices, everyday math, feelings and limits, steady routines).
-- **Grow**: CDC milestone checklists, a **Parent guide** (big ideas, 11 kinds of daily parent moves, a Montessori home-setup checklist, an "An eclectic approach that fits her" section, a "Later on" section on gifted-learner curriculum models, sources), a **Daily log** (gymnastics skills, speech clarity 1 to 5, new words, and an Interest entry that shows what she keeps choosing), a growth map to age 10, and Big Goals.
+- **Progress** (was Grow): levels, feelings, daily log, language passport, and a **Parent guide**. CDC milestone checklists are in Settings, Me, Game settings. The Roadmap to 10 is in Learn tools. A **Parent guide** (big ideas, 11 kinds of daily parent moves, a Montessori home-setup checklist, an "An eclectic approach that fits her" section, a "Later on" section on gifted-learner curriculum models, sources), a **Daily log** (gymnastics skills, speech clarity 1 to 5, new words, and an Interest entry that shows what she keeps choosing), a growth map to age 10, and Big Goals.
 - **Activities**: soccer, gymnastics, theater (January 2027), and horseback riding.
 - **Settings, Look**: retro everywhere (default), retro on kid screens only (Games, Learn, and Feelings), or the classic calm look.
 
 ## Two views: parent and Solana
 
-- **Parent view** (the default): everything, including Today, Learn, Games, School, Grow, Activities, the Parent guide, and Settings.
+- **Parent view** (the default): everything, including Today, Learn, Games, School, Progress, Activities, the Parent guide, and Settings.
 - **Solana's view**: only Games, Learn, and Feelings, with big kid-friendly screens and no parent text. Tap the 👧 button in the parent view to hand over the device. The app reopens in whichever view you used last.
 - **PIN**: in Settings, Profiles, set a 4 to 6 digit PIN. Switching from Solana's view back to the parent view (the 👪 button) then asks for it. The PIN is a child lock, not strong security. It is stored on the device in scrambled form.
 - These are two views on one device, not two online accounts. Both share the same saved progress. Separate logins on separate devices would need a server and a database, which this version deliberately does not use.
@@ -137,7 +137,7 @@ The Games home shows Letters, Numbers, Colors, Shapes and every topic side by si
 All instructions, hints and praise are in English. Only the practice words and short word sentences use her second language.
 
 ## Tabs
-Grown-up view: Today, Learn (topic play and word bank), Games, School (CREC unit), Grow (includes a Feelings log of what Solana taps), Activities.
+Grown-up view: Today, Learn (topic play and word bank), Games, School (CREC unit), Progress (includes a Feelings log of what Solana taps), Activities.
 Solana's view: Games, Learn, Feelings. Recordings you make in Learn (Mom's voice) play on her word cards.
 
 ## Let's go! (guided path)

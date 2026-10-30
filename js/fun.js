@@ -137,14 +137,14 @@
   /* ---------- UNITS (Theme tab) ---------- */
   F.unitChips = function (ctx) {
     const chip = (u) => '<button class="chip" aria-pressed="' + (ctx.state.unit === u.id) + '" data-act="unit-set" data-id="' + u.id + '">' + u.emoji + ' ' + ctx.esc(u.name) + (SA.themes.some((t) => t.id === u.id) ? ' 📅' : '') + '</button>';
-    return '<p class="small muted" style="margin-bottom:4px">Open topics (Solana can also pick these herself in Games):</p><div class="chips">' + SA.units.filter((u) => !u.school).map(chip).join('') + '</div>' +
-      '<p class="small muted" style="margin:10px 0 4px">🏫 From school (CREC units, supporting what she does in class):</p><div class="chips">' + SA.units.filter((u) => u.school).map(chip).join('') + '</div>' +
+    return '<p class="small muted" style="margin-bottom:4px">Open topics (Solana can also pick these herself in Games):</p><div class="chips" style="flex-wrap:wrap;overflow:visible">' + SA.units.filter((u) => !u.school).map(chip).join('') + '</div>' +
+      '<p class="small muted" style="margin:10px 0 4px">🏫 From school (CREC units, supporting what she does in class):</p><div class="chips" style="flex-wrap:wrap;overflow:visible">' + SA.units.filter((u) => u.school).map(chip).join('') + '</div>' +
       '<p class="small muted">📅 means the topic has a full 6-week daily plan.</p>';
   };
   F.customWords = function (ctx) {
     const esc = ctx.esc; const u = unitOf(ctx); const mine = (ctx.state.customWords || {})[u.id] || [];
     let h = '';
-    h += '<div class="card"><b>Add your own words</b><p class="small muted">Ask her teacher for this week’s list and add it here. Words appear in the Learn tab.</p>' +
+    h += '<div class="card"><b>Add your own words</b><p class="small muted">Ask her teacher for this week’s list and add it here. Words appear in her Learn tab.</p>' +
       '<label class="f" for="cwen">English</label><input type="text" id="cwen" maxlength="30" autocomplete="off">' +
       '<label class="f" for="cwes">Spanish</label><input type="text" id="cwes" maxlength="30" autocomplete="off">' +
       '<label class="f" for="cwem">Emoji</label><input type="text" id="cwem" maxlength="4" value="⭐">' +
@@ -155,7 +155,7 @@
 
   F.unitPage = function (ctx) {
     const esc = ctx.esc; const u = unitOf(ctx); const mine = (ctx.state.customWords || {})[u.id] || [];
-    let h = '<div class="card hero"><b style="font-size:22px">' + u.emoji + ' ' + esc(u.name) + '</b><p>Starter unit. Word cards, Spidey lines, and story time in the Learn tab all use this unit. The daily plan on the Today tab still follows Trees until a full plan for this unit is added.</p></div>';
+    let h = '<div class="card hero"><b style="font-size:22px">' + u.emoji + ' ' + esc(u.name) + '</b><p>Starter unit. Word cards, Spidey lines, and story time in her Learn tab all use this unit. The daily plan on the Today tab still follows Trees until a full plan for this unit is added.</p></div>';
     h += '<details class="acc" open><summary>' + (u.school ? '6-week plan outline' : 'Topic outline') + '</summary><div class="acc-body"><ol>' + u.weeks.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ol></div></details>';
     h += '<div class="card"><b>Words</b>' + u.words.concat(mine).map((w, i) => {
       const tl = tlFor(ctx, w);
@@ -166,7 +166,7 @@
     return h;
   };
 
-  /* ---------- daily log (Grow tab) ---------- */
+  /* ---------- daily log (Progress tab) ---------- */
   F.viewLog = function (ctx) {
     const esc = ctx.esc; const st = ctx.state; const kind = ctx.ui.lkind || 'gym';
     const log = st.log || [];

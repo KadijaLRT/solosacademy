@@ -290,7 +290,7 @@
       ['Numbers', 'numbers', numItems(ctx).map((x) => ({ id: x.id, label: String(x.n) }))],
       ['Colors', 'colors', colorItems(ctx).map((x) => ({ id: x.id, label: x.en }))],
       ['Shapes', 'shapes', shapeItems(ctx).map((x) => ({ id: x.id, label: x.en }))],
-      [u.name + ' words', 'words', wordItems(ctx).map((x) => ({ id: x.id, label: x.e + ' ' + x.en }))]
+      [u.name + ' words', 'words', wordItems(ctx).map((x) => ({ id: x.id, label: x.en }))]
     ];
     let h = '<div class="card"><b>Her progress</b><p class="small muted">Counted from the games. A piece is mastered after 3 right answers. Green = mastered, yellow = started, gray = not yet. Turn on Practice above to aim her games at the yellow and gray ones.</p>';
     defs.forEach((d) => {
@@ -317,6 +317,10 @@
       ((ctx.state.levelLog || []).length ? '<p class="small keep"><b>Level-ups:</b> ' + (ctx.state.levelLog || []).slice(0, 4).map((x) => ctx.esc(x.date.slice(5)) + ' ' + ctx.esc(({ letters: 'Letters', numbers: 'Numbers', colors: 'Colors', shapes: 'Shapes', words: 'Unit words' })[x.sec]) + ' to L' + x.level).join(', ') + '</p>' : '') +
       grp('Start point', 'Her age is the default. Ahead starts every section one or two levels higher.', chips(ctx, [['0', 'Her age'], ['1', '1 ahead'], ['2', '2 ahead']], c.boost, 'gboost', 'b')) +
       '<details class="acc"><summary>What each level teaches</summary><div class="acc-body">' + LI.map((x) => '<p class="small"><b>' + x.name + '</b> (' + x.like + '): ' + ctx.esc(x.does) + '</p>').join('') + '</div></details></div>';
+    const ms = ctx.milestoneStatus();
+    h += '<div class="card"><details class="acc" data-id="msacc"' + (ctx.ui.openDetails.msacc ? ' open' : '') + '><summary>✅ Milestones: what she can already do</summary><div class="acc-body">' +
+      (ms.pct >= 0.75 && (c.boost | 0) < 2 ? '<div class="card good"><b>She has most of the ' + ctx.esc(ms.label.toLowerCase()) + ' milestones.</b><p class="small">Her games can start a level ahead.</p><button class="btn small" data-act="gboost" data-b="' + (((c.boost | 0) + 1)) + '">Start 1 level higher</button></div>' : '') +
+      ctx.milestonesHtml() + '</div></details></div>';
     h += '<div class="card"><b>What she plays</b><p class="small muted">Solana only sees the sections that are on.</p><div class="chips">' +
       SECS.map((k) => '<button class="chip" aria-pressed="' + on(c.secs[k]) + '" data-act="gtoggle" data-s="' + k + '">' + (c.secs[k] ? '✓ ' : '') + secLabel(k, u) + '</button>').join('') + '</div>' +
       '<div class="small muted">Unit words follow the topic picked in the School tab.</div></div>';
@@ -344,7 +348,8 @@
     const bt = { letters: [SA.ic('letters'), 'Letters'], numbers: [SA.ic('numbers'), 'Numbers'], colors: [SA.ic('colors'), 'Colors'], shapes: [SA.ic('shapes'), 'Shapes'] };
     const pathDone = (st.pathDays || []).indexOf(ctx.dkey()) >= 0;
     const pathTile = '<button class="gbig pathbig" data-act="gpath"><span>' + SA.ic(pathDone ? 'check' : 'plane') + '</span>' + (pathDone ? 'Play again!' : 'Let’s go!') + '</button>';
-    const tiles = pathTile + base.map((k) => '<button class="gbig" data-act="gsec" data-s="' + k + '"><span>' + bt[k][0] + '</span>' + bt[k][1] + '</button>').join('') +
+    const thinkTile = '<button class="gbig" data-act="gskills"><span>' + (SA.picSvg('brain') || '🧠') + '</span>Think it!</button>';
+    const tiles = pathTile + base.map((k) => '<button class="gbig" data-act="gsec" data-s="' + k + '"><span>' + bt[k][0] + '</span>' + bt[k][1] + '</button>').join('') + thinkTile +
       (c.secs.words ? (SA.topicOrder || SA.units.map((u) => u.id)).map((id) => SA.units.find((u) => u.id === id)).filter(Boolean).map((u) =>
         '<button class="gbig" style="background:linear-gradient(160deg,' + u.c2 + ',' + u.c1 + ')" data-act="gtopic" data-id="' + u.id + '"><span>' + SA.topicIc(u) + '</span>' + ctx.esc(u.name) + (u.school ? ' 🏫' : '') + '</button>').join('') : '');
     return '<div class="card gtop"><div class="rbcol">' + rainbow(n, true) + '<div class="small muted">' + n + ' of 7 · 🌈 ' + (st.rainbows || 0) + '</div></div>' +
@@ -613,6 +618,7 @@
     if (g.screen === 'hub') h += '<h2>Games</h2>';
     if (g.screen === 'letter') return h + letterCard(ctx, g);
     if (g.screen === 'lgrid') return h + lgridView(ctx, g);
+    if (g.screen === 'skills') return h + SA.skills.view(ctx);
     if (g.screen === 'sec') return h + secView(ctx, g);
     if (g.screen === 'done') return h + doneView(ctx, g);
     if (g.screen === 'play') {
@@ -707,6 +713,7 @@
   };
   G.handle = function (a, d, ctx) {
     const g = GS(ctx); const f = F();
+    if (a === 'gskills' || a.indexOf('gsk-') === 0) { SA.kid.stop(); g.path = null; return SA.skills.handle(a, d, ctx, g); }
     if (a === 'ghub' || a === 'gexit' || a === 'gback' || a === 'gsec' || a === 'gtopic') { SA.kid.stop(); g.path = null; }
     switch (a) {
       case 'gsec': { g.sec = d.s; g.screen = 'sec'; ctx.render(false); const nm = ({ letters: 'Letters', numbers: 'Numbers', colors: 'Colors', shapes: 'Shapes' })[d.s] || (f.unitOf(ctx).name + ' words'); f.say(ctx, nm, 'en-US', false, true); return true; }
@@ -769,7 +776,9 @@
   };
 
   /* ---------- drag with pointer events (works with touch and mouse) ---------- */
+  G.api = { get reward() { return reward; }, get sYay() { return sYay; }, get sNo() { return sNo; }, get praise() { return praise; }, get previewing() { return previewing; }, get rainbow() { return rainbow; }, get beep() { return beep; } };
   G.mount = function (ctx) {
+    if (SA.skills && SA.skills.mount) SA.skills.mount(ctx);
     const view = document.getElementById('view'); let drag = null;
     function snapBack(el) { el.style.transition = 'transform .2s'; el.style.transform = ''; setTimeout(() => { el.style.transition = ''; }, 220); }
     view.addEventListener('pointerdown', (e) => {

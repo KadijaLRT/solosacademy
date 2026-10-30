@@ -127,7 +127,7 @@
     ],
     eclectic: {
       title: 'An eclectic approach that fits her',
-      intro: 'No single method fits every child, so the sources you shared suggest mixing methods and adjusting to the child. The app is built that way on purpose.',
+      intro: 'No single method fits every child, so the best approach mixes methods and adjusts to the child. The app is built that way on purpose.',
       attribution: 'The four approaches below come from a quote in your notes, credited to Karen Morse of Hoagies\u2019 Gifted Education Page. I could not find that wording on the Davidson Online page you linked, so check the original source before quoting it.',
       approaches: [
         { t: 'Classical education', d: 'Emphasizes the tools of learning.', app: 'In the app: sound drills, word cards, reading and singing.' },
