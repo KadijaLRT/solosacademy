@@ -15,13 +15,13 @@ This app merges the earlier Sky Academy app with the Little Learners play featur
 - **Feelings**: a toolkit with six feelings in six languages, airplane breathing, calm-down tools, and scripts for hard moments.
 - **School**: pick the unit. All five units (Trees, Water, Community Helpers, How Things Move, Buildings) have a full 6-week daily plan: weekly words, books, songs, movement, Spidey and airplane play, crafts, science, number play, feelings, and questions. The Today tab follows the selected unit, and each unit keeps its own start date (Settings). You can add your own words to any unit.
 - **Parent move of the day** (on Today): one small, research-backed habit each day (serve and return, notice and adapt, talking it through, real-life jobs, praising effort, open-ended play, music and rhythm, moving outdoors, her own choices, everyday math, feelings and limits, steady routines).
-- **Progress** (was Grow): levels, feelings, daily log, language passport, and a **Parent guide**. CDC milestone checklists are in Settings, Me, Game settings. The Roadmap to 10 is in Learn tools. A **Parent guide** (big ideas, 11 kinds of daily parent moves, a Montessori home-setup checklist, an "An eclectic approach that fits her" section, a "Later on" section on gifted-learner curriculum models, sources), a **Daily log** (gymnastics skills, speech clarity 1 to 5, new words, and an Interest entry that shows what she keeps choosing), a growth map to age 10, and Big Goals.
+- **Progress** (was Grow): levels, feelings, daily log, language passport. CDC milestone checklists are in Settings, Me, Game settings. The Roadmap to 10 is in Learn tools. A **Parent guide** (big ideas, 11 kinds of daily parent moves, a Montessori home-setup checklist, an "An eclectic approach that fits her" section, a "Later on" section on gifted-learner curriculum models, sources), a **Daily log** (gymnastics skills, speech clarity 1 to 5, new words, and an Interest entry that shows what she keeps choosing), a growth map to age 10, and Big Goals.
 - **Activities**: soccer, gymnastics, theater (January 2027), and horseback riding.
 - **Settings, Look**: retro everywhere (default), retro on kid screens only (Games, Learn, and Feelings), or the classic calm look.
 
 ## Two views: parent and Solana
 
-- **Parent view** (the default): everything, including Today, Learn, Games, School, Progress, Activities, the Parent guide, and Settings.
+- **Parent view** (the default): everything, including Today, Learn, Games, School, Progress, Activities, and Settings.
 - **Solana's view**: only Games, Learn, and Feelings, with big kid-friendly screens and no parent text. Tap the 👧 button in the parent view to hand over the device. The app reopens in whichever view you used last.
 - **PIN**: in Settings, Profiles, set a 4 to 6 digit PIN. Switching from Solana's view back to the parent view (the 👪 button) then asks for it. The PIN is a child lock, not strong security. It is stored on the device in scrambled form.
 - These are two views on one device, not two online accounts. Both share the same saved progress. Separate logins on separate devices would need a server and a database, which this version deliberately does not use.
@@ -103,7 +103,7 @@ Re-upload the folder. Change `CACHE` in `sw.js` to a new name each time (for exa
 - `index.html`, `styles.css`, `retro.css`, `js/app.js`: the app and its looks
 - `js/fun.js`, `js/data-fun.js`: Learn tab, units, daily log, sing drills
 - `js/games.js`, `games.css`, `js/data-letters.js`, `js/data-basics.js`: the Games tab (letters, numbers, colors, shapes, counting, chants)
-- `js/parent.js`, `js/data-parent.js`: parent move of the day and the Parent guide
+- `js/parent.js`, `js/data-parent.js`: parent move of the day, set-up checklist, habits and keep-it-light notes
 - `js/data-words.js`, `js/data-english.js`, `js/data-trees.js`, `js/data-pathway.js`: the original Sky Academy content
 - `js/data-water.js`, `js/data-helpers.js`, `js/data-moving.js`, `js/data-buildings.js`: the 6-week plans for the other four units
 - `api/spidey.js`: optional Groq function for Vercel

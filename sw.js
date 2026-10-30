@@ -1,5 +1,5 @@
 /* Solo's Academy service worker: caches everything so the app works offline. */
-const CACHE = 'solos-academy-v58';
+const CACHE = 'solos-academy-v59';
 const ASSETS = [
   './',
   './index.html',

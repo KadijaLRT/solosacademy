@@ -110,7 +110,6 @@
   ];
 
   SA.parentGuide = {
-    intro: 'Early-childhood research and Montessori practice share one idea: steady, responsive daily time beats gadgets, flashcards, and packed schedules. This page turns that into small habits that fit the app.',
     principles: [
       { t: 'Serve and return', d: 'She "serves" with a sound, a word, a look, or a point. You "return" by answering, adding a bit, and waiting for her next turn. The Harvard Center on the Developing Child calls this back-and-forth fundamental to how the brain wires up in the earliest years.' },
       { t: 'Praise effort and strategy', d: 'Say what she did ("You kept trying") more than who she is ("You are so smart"). A classic 1998 study by Mueller and Dweck found that praising intelligence undermined children\'s motivation compared with praising effort. Later work on growth-mindset programs shows smaller effects, so treat this as a helpful habit, not a guarantee.' },
@@ -125,70 +124,13 @@
       'Do not rescue her from every small struggle. Stay near, wait, then offer a hint.',
       'Do not turn feelings into a lesson in the middle of a meltdown. Calm first, talk second.'
     ],
-    eclectic: {
-      title: 'An eclectic approach that fits her',
-      intro: 'No single method fits every child, so the best approach mixes methods and adjusts to the child. The app is built that way on purpose.',
-      attribution: 'The four approaches below come from a quote in your notes, credited to Karen Morse of Hoagies\u2019 Gifted Education Page. I could not find that wording on the Davidson Online page you linked, so check the original source before quoting it.',
-      approaches: [
-        { t: 'Classical education', d: 'Emphasizes the tools of learning.', app: 'In the app: sound drills, word cards, reading and singing.' },
-        { t: 'Lifestyle learning', d: 'Treats education as an integral part of the community around her.', app: 'In the app: real-life jobs, outdoor time, activities, and talking with native speakers.' },
-        { t: 'Mastery learning', d: 'Sequential, with immediate feedback.', app: 'In the app: step-by-step sing drills, quiz answers with instant stars, and learned stars.' },
-        { t: 'Integrated learning', d: 'Combines several subjects in project form or units of study.', app: 'In the app: each unit (Trees, Water) weaves language, science, math, movement, art, and feelings around one topic.' }
-      ],
-      models: [
-        { t: 'Project-based learning', d: 'Diving into a real-world challenge and creating something tangible, like a product, presentation, or solution.' },
-        { t: 'Self-paced learning', d: 'Moving at her own speed: faster in strong areas, slower where it is hard.' },
-        { t: 'Unit studies', d: 'A theme that combines subjects, like history, science, and art, around one central topic.' }
-      ],
-      pieces: [
-        { t: 'Differentiated instruction', d: 'Matching materials and teaching to where she is now, using her strengths and growth areas.' },
-        { t: 'Interdisciplinary learning', d: 'Several subjects in one experience, which builds big-picture thinking.' },
-        { t: 'Acceleration versus enrichment', d: 'Acceleration is about pace. Enrichment is about depth over speed, such as encouraging creativity, curiosity, and critical thinking.' }
-      ],
-      notice: [
-        'Notice, Try, Adapt, Connect: watch what she does, try an idea, change one thing if it does not fit, and keep the relationship first.',
-        'Watch what she picks first, how long she stays, and what she repeats. Save it in the Daily log under Interest.',
-        'Does she like a set order, or free exploring? Short bursts or long stretches? Doing, looking, or listening?',
-        'Choose the next activity from those answers, not from a label.'
-      ],
-      caution: 'Reviews of the research have not found strong evidence that teaching to a fixed "learning style" improves learning, so treat these as observations about her interests, pace, and attention, not labels. Many of the toddler activity ideas in your notes come from a page that sells products and cites no research, so I used only the simple, low-risk ideas.'
-    },
-    later: {
-      title: 'Later on: if she shows advanced learning',
-      intro: 'None of this is for now. At almost 3, the guides agree the job is curiosity, language, and joy. The Davidson Academy itself does not consider applicants below grade 4. Come back to this when she is older and you see her learning much faster or going much deeper than her peers.',
-      terms: [
-        { t: 'Acceleration', d: 'Moving through material faster than a traditional curriculum allows. Forms include grade-skipping, advancing in one subject while staying with peers in others, and early entrance (starting school younger, or taking college courses during high school).' },
-        { t: 'Enrichment', d: 'Exploring topics more deeply, with more complexity and variety, without necessarily moving faster. Examples: independent study, pull-out programs, summer programs, and extracurricular activities.' },
-        { t: 'Compacting', d: 'Streamlining the core curriculum by removing what she has already mastered, to free time for advanced or enrichment work. The steps: identify the goals, pre-assess her, cut the repeats, and substitute new content.' },
-        { t: 'Interest-led learning', d: 'Letting her go deep on topics she loves, which builds motivation from the inside.' }
-      ],
-      models: [
-        { t: 'Subject-centered', d: 'Organizes learning by subject, such as math or science, moving from basic to advanced topics.' },
-        { t: 'Learner-centered', d: 'Starts from the student\'s needs, passions, and abilities, with self-directed exploration.' },
-        { t: 'Problem-centered', d: 'Built around real-world problems students investigate and solve, such as Problem-Based Learning (small-group research and solutions) and Inquiry-Based Learning (student-driven, open-ended questions).' }
-      ],
-      programs: [
-        { t: 'Integrated Curriculum Model (VanTassel-Baska, William & Mary Center for Gifted Education)', d: 'A framework for teaching high-ability learners built on three dimensions: advanced content (in-depth study, advanced reading, primary sources), higher-level processes and product development (reasoning, research, problem-based learning), and big interdisciplinary concepts such as change, systems, patterns, and cause and effect. Units exist in language arts, math, science, and social studies, sold through publishers such as Kendall Hunt and Prufrock Press.', u: 'https://education.wm.edu/centers/cfge/curriculum/index.php' },
-        { t: 'Beast Academy (Art of Problem Solving)', d: 'A full math program for ages 6 to 13 that teaches problem solving through comic-style guides and puzzles. Levels run from Level 1 (ages 6 to 8) to Level 5 (ages 10 to 13), as books, online, or both.', u: 'https://beastacademy.com/faq' },
-        { t: 'Davidson Academy', d: 'A free public school for profoundly gifted middle and high school students. Its curriculum fits the learner-centered model, with a Prospective Learning Plan for each student, classes grouped by ability instead of age, and acceleration. The eligibility page requires grade 4 or above, strict testing and placement criteria, and Nevada residency for the school. Davidson Academy Online serves students across the U.S. and Canada; its requirements are listed at davidsononline.org.', u: 'https://www.davidsonacademy.unr.edu/admissions/eligibility/' },
-        { t: 'Wordly Wise 3000', d: 'A vocabulary workbook series with levels from kindergarten up to grade 12. Look at it when she is reading on her own.', u: 'https://www.rainbowresource.com/wordly-wise-3000-all-editions' },
-        { t: 'Beyond the Page', d: 'A literature and project-based curriculum named in your notes. I did not verify its grade levels, so check its website before relying on it.', u: '' }
-      ],
-      caution: 'No test or checklist in this app can tell you whether she is gifted. If you ever want to know, a licensed child psychologist or her school can assess her when she is older.'
-    },
-    books: [
-      { t: 'The Montessori Child', by: 'Simone Davies and Junnifa Uzodike', note: 'A parent guide for ages 3 to 12 with home setup ideas and an appendix of hands-on activities using household materials.', u: 'https://themontessorinotebook.com/the-montessori-child' }
-    ],
-    sources: [
-      { t: 'Davidson Online: The basics of homeschool curricula for gifted students', u: 'https://www.davidsononline.org/blog/the-basics-of-homeschool-curricula-for-gifted-students/' },
-      { t: 'Your Baby\u2019s a Genius: Toddler learning guide (activity ideas only; it cites no research and sells products)', u: 'https://yourbabysagenius.com/stages/toddler' },
-      { t: 'Davidson Academy: curriculum models for gifted learners', u: 'https://www.davidsonacademy.unr.edu/blog/curriculum-models-for-gifted-learners/' },
-      { t: 'William & Mary Center for Gifted Education: curriculum framework', u: 'https://education.wm.edu/centers/cfge/curriculum/index.php' },
-      { t: 'Beast Academy FAQ (Art of Problem Solving)', u: 'https://beastacademy.com/faq' },
-      { t: 'Davidson Academy eligibility', u: 'https://www.davidsonacademy.unr.edu/admissions/eligibility/' },
-      { t: 'Harvard Center on the Developing Child: Serve and Return', u: 'https://developingchild.harvard.edu/resources/serve-return-interaction/' },
-      { t: 'Mueller and Dweck (1998), Praise for intelligence can undermine children\'s motivation and performance', u: 'https://www.columbia.edu/cu/psychology/courses/3615/Readings/Mueller_Dweck.pdf' },
-      { t: 'The Montessori Child, by Simone Davies and Junnifa Uzodike', u: 'https://themontessorinotebook.com/the-montessori-child' }
+    habits: [
+      'Read to her every day and talk about the story.',
+      'Build number sense with real objects and play (count stairs, sort socks).',
+      'Keep one sport and one art going. Depth beats a long list.',
+      'Protect sleep, movement, and free play.',
+      'Say "not yet" after a mistake, then try again together.',
+      'Let her see you read and finish something hard.'
     ],
     safety: 'Safety: Stay with her for water play, knives, and small objects. Cut round foods such as grapes lengthwise. Keep acorns, seeds, and other small items out of reach under age 4. If you ever have concerns about her speech, development, or behavior, ask her pediatrician.'
   };

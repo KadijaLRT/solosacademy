@@ -201,7 +201,7 @@
     ctx.save(); return full;
   }
   /* Right answers are counted per letter, number, color, shape, and unit word. Three right answers = mastered. */
-  function winKey(ctx, sec, id) { return sec === 'words' ? 'words:' + ctx.state.unit + ':' + id : sec + ':' + id; }
+  function winKey(ctx, sec, id) { return sec === 'words' ? 'words:' + F().pickIds(ctx).join('+') + ':' + id : sec + ':' + id; }
   function winsOf(ctx, sec, id) {
     const st = ctx.state;
     return sec === 'letters' ? ((st.letterWins || {})[id] || 0) : ((st.gameWins || {})[winKey(ctx, sec, id)] || 0);
@@ -333,7 +333,7 @@
       grp('Spoken instructions', 'A voice explains how to play the first time she opens each game.', chips(ctx, [['1', '🔊 On'], ['0', '🔇 Off']], helpOn(ctx) ? '1' : '0', 'ghelp', 'v')) + '</div>';
     h += '<div class="card center"><button class="btn sun" data-act="gpreview">👀 Try Solana’s games</button><p class="small muted" style="margin-bottom:0">Nothing you do in the preview counts toward her stars or progress.</p></div>';
     h += '<div class="card note"><b>Her device</b><p class="small muted" style="margin-bottom:0">These choices are saved on this device. To copy them to Solana’s device, make a voice pack in Settings and import it there. It carries your recordings and these game settings.</p></div>';
-    return h + progressCard(ctx);
+    return h + progressCard(ctx) + (SA.parent ? SA.parent.lightRules(ctx) : '');
   }
 
   /* ---------- Solana's view: big and simple ---------- */

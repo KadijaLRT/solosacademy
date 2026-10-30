@@ -18,8 +18,27 @@
     if (!ctx.ui.play) ctx.ui.play = { tab: 'cards', wk: 'All', i: 0, show: false, drill: 0, step: 0, lvl: 1, si: 0, fi: 0, res: '', ai: '', busy: false };
     return ctx.ui.play;
   }
-  function unitOf(ctx) { return SA.units.find((u) => u.id === ctx.state.unit) || SA.units[0]; }
-  function wordsOf(ctx, u) { return u.words.concat((ctx.state.customWords || {})[u.id] || []); }
+  function baseUnit(id) { return SA.units.find((u) => u.id === id) || SA.units[0]; }
+  /* The parent's two picks (one school unit, one open topic) feed her words together. If she taps a topic herself, only that topic is used until the parent picks again. */
+  function pickIds(ctx) {
+    const s = ctx.state; const ids = [];
+    if (s.solo) return [baseUnit(s.unit).id];
+    [s.school, s.open].forEach((x) => { if (x && SA.units.some((u) => u.id === x) && ids.indexOf(x) < 0) ids.push(x); });
+    if (!ids.length) ids.push(baseUnit(s.unit).id);
+    return ids;
+  }
+  function unitOf(ctx) {
+    const ids = pickIds(ctx);
+    if (ids.length === 1) return baseUnit(ids[0]);
+    const focus = ids.indexOf(ctx.state.unit) >= 0 ? ctx.state.unit : ids[0]; const us = ids.map(baseUnit);
+    return Object.assign({}, baseUnit(focus), { name: us.map((u) => u.name).join(' + '), ids: ids, words: [].concat.apply([], us.map((u) => u.words.map((w) => Object.assign({ _u: u.id }, w)))) });
+  }
+  function wordsOf(ctx, u) {
+    const cw = ctx.state.customWords || {}; const seen = {};
+    return u.words.concat([].concat.apply([], (u.ids || [u.id]).map((id) => (cw[id] || []).map((w) => (u.ids ? Object.assign({ _u: id }, w) : w)))))
+      .filter((w) => { const k = String(w.en).toLowerCase(); if (seen[k]) return false; seen[k] = 1; return true; });
+  }
+  const wkey = (u, w) => (w._u || u.id) + ':' + w.en;
   function cardList(ctx, p) {
     const u = unitOf(ctx);
     return wordsOf(ctx, u).filter((w) => p.wk === 'All' || w.week === p.wk || w.week === 'All');
@@ -45,7 +64,7 @@
     return '<p class="small muted" style="margin-bottom:4px">Pick a voice:</p>' + chipRow(ctx, SA.voices.map((v) => [v.id, v.emoji + ' ' + v.name]), cur, 'pvoice', 'v');
   }
   /* Mom's voice: parent records a clip per word and language; Solana can play it. Stored on this device only. */
-  function momKey(ctx, w, lang) { return 'mom:' + unitOf(ctx).id + ':' + w.en + ':' + lang; }
+  function momKey(ctx, w, lang) { return 'mom:' + (w._u || unitOf(ctx).id) + ':' + w.en + ':' + lang; }
   function momCard(ctx, w, tl) {
     const esc = ctx.esc; const child = ctx.isChild(); const lang = ctx.state.focusLang || 'es';
     const slots = [['en', 'English', momKey(ctx, w, 'en')], ['tl', tl.name, momKey(ctx, w, lang)]];
@@ -65,7 +84,7 @@
   F.heroes = HEROES;
   F.hero = function (ctx) { const h = HEROES.find((x) => x[0] === ctx.state.hero) || HEROES[0]; return { id: h[0], e: h[1], name: h[2] || ctx.state.nick || 'Solana' }; };
   F.H = function (ctx, str) { return String(str || '').replace(/Spidey/g, F.hero(ctx).name); };
-  F.say = say; F.unitOf = unitOf; F.wordsOf = wordsOf; F.tlFor = tlFor;
+  F.say = say; F.unitOf = unitOf; F.baseUnit = baseUnit; F.pickIds = pickIds; F.wordsOf = wordsOf; F.tlFor = tlFor;
   function chipRow(ctx, items, cur, act, key) {
     return '<div class="chips">' + items.map((t) => '<button class="chip" aria-pressed="' + (cur === t[0]) + '" data-act="' + act + '" data-' + key + '="' + ctx.esc(t[0]) + '">' + t[1] + '</button>').join('') + '</div>';
   }
@@ -84,8 +103,8 @@
     let h = '<p class="muted small">' + u.emoji + ' Unit: <b>' + esc(u.name) + '</b>' + (ctx.isChild() ? '' : '. Change it in the School tab.') + '</p>' + chipRow(ctx, weeks, p.wk, 'pwk', 'w') + voiceRow(ctx);
     if (!list.length) return h + '<div class="card">No words for this week yet.</div>';
     p.i = ((p.i % list.length) + list.length) % list.length;
-    const w = list[p.i]; const tl = tlFor(ctx, w); const key = u.id + ':' + w.en; const done = !!ctx.state.fmastered[key];
-    const allDone = list.length >= 3 && list.every((x) => ctx.state.fmastered[u.id + ':' + x.en]);
+    const w = list[p.i]; const tl = tlFor(ctx, w); const key = wkey(u, w); const done = !!ctx.state.fmastered[key];
+    const allDone = list.length >= 3 && list.every((x) => ctx.state.fmastered[wkey(u, x)]);
     const wi = weeks.findIndex((x) => x[0] === p.wk); const nextWk = weeks[(wi + 1) % weeks.length][0];
     h += '<div class="card center play-card"><div class="big-em">' + w.emoji + '</div><div class="big-word">' + esc(w.en) + '</div>' +
       (p.show ? '<div class="big-word tl' + (tl.rtl ? ' rtl' : '') + '">' + esc(tl.text) + '</div>' + (tl.sound ? '<p><span class="pill">Sounds like: ' + esc(tl.sound) + '</span></p>' : '') : '<p class="muted small">Tap the language button to reveal the word.</p>') +
@@ -136,9 +155,13 @@
 
   /* ---------- UNITS (Theme tab) ---------- */
   F.unitChips = function (ctx) {
-    const chip = (u) => '<button class="chip" aria-pressed="' + (ctx.state.unit === u.id) + '" data-act="unit-set" data-id="' + u.id + '">' + u.emoji + ' ' + ctx.esc(u.name) + (SA.themes.some((t) => t.id === u.id) ? ' 📅' : '') + '</button>';
-    return '<p class="small muted" style="margin-bottom:4px">Open topics (Solana can also pick these herself in Games):</p><div class="chips" style="flex-wrap:wrap;overflow:visible">' + SA.units.filter((u) => !u.school).map(chip).join('') + '</div>' +
-      '<p class="small muted" style="margin:10px 0 4px">🏫 From school (CREC units, supporting what she does in class):</p><div class="chips" style="flex-wrap:wrap;overflow:visible">' + SA.units.filter((u) => u.school).map(chip).join('') + '</div>' +
+    const s = ctx.state; const ids = pickIds(ctx);
+    const on = (u) => (s.solo ? false : u.school ? (s.school || (ids.indexOf(u.id) >= 0 && u.id)) === u.id : s.open === u.id);
+    const chip = (u) => '<button class="chip" aria-pressed="' + on(u) + '" data-act="unit-pick" data-id="' + u.id + '">' + u.emoji + ' ' + ctx.esc(u.name) + (SA.themes.some((t) => t.id === u.id) ? ' 📅' : '') + '</button>';
+    return (s.solo ? '<div class="card note small">She picked <b>' + ctx.esc(baseUnit(s.unit).name) + '</b> herself, so her screens show only that. <button class="btn alt small" data-act="unit-mix">Use my two picks again</button></div>' : '') +
+      '<p class="small muted" style="margin-bottom:4px">Pick one of each. Both feed her words.</p>' +
+      '<p class="small muted" style="margin:6px 0 4px">🏫 From school (drives the daily plan, Today and this tab):</p><div class="chips" style="flex-wrap:wrap;overflow:visible">' + SA.units.filter((u) => u.school).map(chip).join('') + '</div>' +
+      '<p class="small muted" style="margin:10px 0 4px">⭐ Open topic (tap again to turn off):</p><div class="chips" style="flex-wrap:wrap;overflow:visible">' + SA.units.filter((u) => !u.school).map(chip).join('') + '</div>' +
       '<p class="small muted">📅 means the topic has a full 6-week daily plan.</p>';
   };
   F.customWords = function (ctx) {
@@ -230,7 +253,7 @@
         else say(ctx, F.H(ctx, w.spidey), 'en-US');
         return true;
       }
-      case 'plearn': { const w = cur(); if (!w) return true; const k = unitOf(ctx).id + ':' + w.en; st.fmastered = st.fmastered || {}; st.fmastered[k] = !st.fmastered[k]; ctx.save(); ctx.render(true); if (st.fmastered[k]) ctx.toast('Learned! ⭐'); return true; }
+      case 'plearn': { const w = cur(); if (!w) return true; const k = wkey(unitOf(ctx), w); st.fmastered = st.fmastered || {}; st.fmastered[k] = !st.fmastered[k]; ctx.save(); ctx.render(true); if (st.fmastered[k]) ctx.toast('Learned! ⭐'); return true; }
       case 'pdrill': p.drill = +d.i; p.step = 0; ctx.render(true); return true;
       case 'pstep': p.step = Math.max(0, Math.min(SA.songDrills[p.drill].steps.length - 1, p.step + +d.d)); ctx.render(true); return true;
       case 'psay': say(ctx, d.text, tagFor(ctx, d.text), d.slow === '1', d.plain === '1'); return true;
@@ -243,7 +266,15 @@
         p.res = ok ? 'Yes! ' + fb.a + ' / ' + fb.es : 'Hmm, try again!'; ctx.render(true); if (ok) say(ctx, fb.a, 'en-US'); return true;
       }
       case 'pfnext': p.fi += 1; p.res = ''; ctx.render(true); return true;
-      case 'unit-set': ctx.ui.tweek = null; st.unit = d.id; p.wk = 'All'; p.i = 0; p.si = 0; p.fi = 0; p.show = false; p.ai = ''; ctx.save(); ctx.render(true); ctx.toast('Unit: ' + unitOf(ctx).name); return true;
+      case 'unit-pick': {
+        const u = baseUnit(d.id); ctx.ui.tweek = null;
+        if (u.school) st.school = u.id; else st.open = st.open === u.id ? null : u.id;
+        st.unit = (u.school || st.open) ? u.id : (st.school || u.id); st.solo = false;
+        p.wk = 'All'; p.i = 0; p.si = 0; p.fi = 0; p.show = false; p.ai = ''; ctx.save(); ctx.render(true);
+        ctx.toast(unitOf(ctx).name); return true;
+      }
+      case 'unit-mix': st.solo = false; p.wk = 'All'; p.i = 0; p.si = 0; p.fi = 0; p.show = false; ctx.save(); ctx.render(true); return true;
+      case 'unit-set': ctx.ui.tweek = null; st.unit = d.id; st.solo = true; p.wk = 'All'; p.i = 0; p.si = 0; p.fi = 0; p.show = false; p.ai = ''; ctx.save(); ctx.render(true); ctx.toast('Unit: ' + unitOf(ctx).name); return true;
       case 'uspeak': { const u = unitOf(ctx); const w = wordsOf(ctx, u)[+d.i]; if (w) say(ctx, w.en, 'en-US'); return true; }
       case 'cw-add': {
         const en = (document.getElementById('cwen').value || '').trim(); const es = (document.getElementById('cwes').value || '').trim();

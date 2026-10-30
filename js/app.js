@@ -19,7 +19,7 @@
   const WBY = {}; S.words.forEach((w) => { WBY[w.id] = w; });
   const CATBY = {}; S.categories.forEach((c) => { CATBY[c.id] = c; });
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-  const APP_VERSION = 58;
+  const APP_VERSION = 59;
   const KID_TABS = [['games', '🎈', 'Games'], ['learn', '📚', 'Learn'], ['feel', '💛', 'Feelings']];
   const PARENT_TABS = [['today', '🏠', 'Today'], ['theme', '🏫', 'School'], ['grow', '🚀', 'Progress'], ['act', '🎭', 'Activities']];
 
@@ -41,6 +41,7 @@
     if (!s.boxingAdded) { s.boxingAdded = true; if (Array.isArray(s.activities) && !s.activities.some((a) => a.id === 'a-boxing' || /boxing/i.test(a.name))) { const b = S.activityDefaults.find((a) => a.id === 'a-boxing'); if (b) s.activities.push(JSON.parse(JSON.stringify(b))); } }
     if (!s.violinAdded) { s.violinAdded = true; if (Array.isArray(s.activities) && !s.activities.some((a) => a.id === 'a-violin' || /violin/i.test(a.name))) { const v = S.activityDefaults.find((a) => a.id === 'a-violin'); if (v) s.activities.push(JSON.parse(JSON.stringify(v))); } }
     if (!s.themeStart) s.themeStart = dkey();
+    if (!s.school) { const cu = S.units.find((u) => u.id === s.unit); s.school = cu && cu.school ? cu.id : 'trees'; if (cu && !cu.school && !s.open) s.open = cu.id; }
     if (!s.stretchSet) { s.level = 'stretch'; s.stretchSet = true; } /* she is learning ahead of her age: start on the longer daily plan */
     return s;
   }
@@ -85,7 +86,7 @@
     const id = ageMilestoneBand(); const band = S.milestones.find((m) => m.id === id);
     return { id, label: band.label, pct: bandPct(id), ahead: defaultMilestoneBand() !== id };
   }
-  function planTheme() { return S.themes.find((t) => t.id === state.unit) || S.themes[0]; }
+  function planTheme() { return S.themes.find((t) => t.id === state.school) || S.themes[0]; }
   function startFor(id) {
     if (id === 'trees') return state.themeStart || dkey();
     state.unitStarts = state.unitStarts || {};
@@ -694,9 +695,9 @@
 
   /* ---------- THEME ---------- */
   function viewTheme() {
-    const cu = S.units.find((u) => u.id === state.unit) || S.units[0];
-    const chips = '<h2>School</h2><details class="acc" data-id="unitpick"' + (ui.openDetails.unitpick ? ' open' : '') + '><summary>' + cu.emoji + ' ' + esc(cu.name) + ' (tap to change topic)</summary><div class="acc-body">' + S.fun.unitChips(ctx) + '</div></details>';
-    if (!S.themes.some((t) => t.id === state.unit)) return chips + S.fun.unitPage(ctx);
+    const cu = S.fun.unitOf(ctx); const mixed = !!cu.ids;
+    const chips = '<h2>School</h2><details class="acc" data-id="unitpick"' + (ui.openDetails.unitpick ? ' open' : '') + '><summary>' + cu.emoji + ' ' + esc(cu.name) + ' (tap to change topics)</summary><div class="acc-body">' + S.fun.unitChips(ctx) + '</div></details>';
+    if (!S.themes.some((t) => t.id === state.school)) return chips + S.fun.unitPage(ctx);
     return chips + viewPlan();
   }
   function viewPlan() {
@@ -797,27 +798,18 @@
   function gTile(id, em, label, status) {
     return '<button class="gtile" data-act="gtab" data-t="' + id + '"><span class="gt-em">' + em + '</span><b>' + label + '</b><span class="gt-st">' + status + '</span></button>';
   }
-  function growGuide() {
-    const secs = S.parent.sections(ctx);
-    if (ui.gsec) {
-      const x = secs.find((y) => y.id === ui.gsec);
-      if (x) return '<div class="gback"><button class="btn alt small" data-act="grsec" data-id="">◀ Guide</button><b>' + x.e + ' ' + esc(x.t) + '</b></div><div class="card">' + x.body + '</div>';
-    }
-    return '<div class="grid g2">' + secs.map((x) => '<button class="gtile" data-act="grsec" data-id="' + x.id + '"><span class="gt-em">' + x.e + '</span><b>' + esc(x.t) + '</b><span class="gt-st">' + esc(x.n) + '</span></button>').join('') + '</div>' + S.parent.safety(ctx);
-  }
-  const GTITLES = { feels: ['💛', 'Feelings'], log: ['📈', 'Daily log'], guide: ['🌱', 'Parent guide'], pass: ['🛂', 'Language passport'], skills: ['🧠', 'Skill games'], levels: ['🚀', 'Her levels'] };
+  const GTITLES = { feels: ['💛', 'Feelings'], log: ['📈', 'Daily log'], pass: ['🛂', 'Language passport'], skills: ['🧠', 'Skill games'], levels: ['🚀', 'Her levels'] };
   function viewGrow() {
     const t = GTITLES[ui.gtab] ? ui.gtab : 'hub';
     if (t === 'hub') {
       const f = S.feelings.find((x) => x.id === (state.feelLog || {})[dkey()]);
-      const tip = S.parent.todayMove(themeInfo().diff).m.t; const lv = S.stage.level(state);
+      const lv = S.stage.level(state);
       return '<h2>Progress</h2><div class="grid g2">' +
         gTile('pass', S.ic('words'), 'Language passport', masteredSet().size + ' words mastered in games') +
         gTile('skills', S.picSvg ? S.picSvg('brain') : '🧠', 'Skill games', S.skills.info.reduce((n, x) => n + S.skills.winsOf(ctx, x.id), 0) + ' right answers') +
         gTile('levels', S.ic('grow'), 'Her levels', 'Level ' + lv + (S.stage.ageText(state) ? ' · ' + esc(S.stage.ageText(state)) : '')) +
         gTile('feels', S.ic('heart'), 'Feelings', f ? 'Today: ' + esc(f.name) : 'None today') +
-        gTile('log', S.ic('chart'), 'Daily log', (state.log || []).length + ' entries') +
-        gTile('guide', S.ic('sprout'), 'Parent guide', esc(tip)) + '</div>';
+        gTile('log', S.ic('chart'), 'Daily log', (state.log || []).length + ' entries') + '</div>';
     }
     const head = '<div class="gback"><button class="btn alt small" data-act="gtab" data-t="hub">◀ Progress</button><b>' + GTITLES[t][0] + ' ' + GTITLES[t][1] + '</b></div>';
     if (t === 'feels') return head + growFeelings();
@@ -825,7 +817,7 @@
     if (t === 'levels') return head + growLevels();
     if (t === 'pass') return head + viewPassport();
     if (t === 'skills') return head + viewSkills();
-    return (ui.gsec ? '' : head) + growGuide();
+    return head;
   }
   /* ---------- ACTIVITIES ---------- */
   const STATUS = { active: ['Active now', 'green'], next: ['Next up', 'sun'], planned: ['Planned', ''], paused: ['Paused', 'coral'], done: ['Finished', ''] };
@@ -851,6 +843,7 @@
     }
     return '<div class="card warn"><b>➕ ' + label + '</b><div>Nothing up next yet.</div></div>';
   }
+  function habitWeekKey() { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function viewAct() {
     let h = '<h2>Activities</h2><p class="muted">Goal: one sport and one art at all times. There is no limit on how many she can try.</p>';
     h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' + goalTile('sport', 'Sport') + goalTile('art', 'Art') + '</div>';
@@ -860,6 +853,7 @@
     h += list.map((a) => '<div class="card"><div class="row between"><div><b style="font-size:19px">' + (a.type === 'sport' ? '🏅' : a.type === 'art' ? '🎭' : '⭐') + ' ' + esc(a.name) + '</b> <span class="pill ' + STATUS[a.status][1] + '">' + STATUS[a.status][0] + '</span>' +
       (whenText(a) ? '<div class="muted small">' + esc(whenText(a)) + '</div>' : '') + '</div><button class="btn alt small" data-act="act-open" data-id="' + esc(a.id) + '">Edit</button></div>' +
       (a.note ? '<p class="small">' + esc(a.note) + '</p>' : '') + (a.lang ? '<p class="small muted">🌍 ' + esc(a.lang) + '</p>' : '') + '</div>').join('');
+    h += S.parent.setupCard(ctx) + S.parent.habitsCard(ctx, habitWeekKey());
     h += '<details class="acc" data-id="act-ideas"' + (ui.openDetails['act-ideas'] ? ' open' : '') + '><summary>💡 Ideas to add</summary><div class="acc-body">' + S.activityIdeas.map((x, i) => '<div class="card"><div class="row between"><div><b>' + esc(x.name) + '</b> <span class="pill">' + esc(x.type) + '</span><div class="small muted">' + esc(x.why) + '</div></div><button class="btn alt small" data-act="act-idea" data-i="' + i + '">Add</button></div></div>').join('') + '</div></details>';
     h += '<div class="card note small"><b>Safety notes.</b> Ask every program about its minimum age, coach-to-child ratio, and safety rules. For riding, use a certified riding helmet (ASTM/SEI) and ask the stable how they match horses and lessons to small children. For water, an adult stays within arm’s reach.</div>';
     return h;
@@ -1062,8 +1056,7 @@
         break;
       }
       case 'tweek': ui.tweek = +d.n; render(true); break;
-      case 'gtab': ui.gtab = d.t; ui.gsec = null; render(true); break;
-      case 'grsec': ui.gsec = d.id || null; render(true); break;
+      case 'gtab': ui.gtab = d.t; render(true); break;
       case 'gband': ui.gband = d.id; render(false); break;
       case 'mband': ui.mband = d.id; render(true); break;
       case 'age-done': state.ageDone = state.ageDone || {}; if (state.ageDone[d.k]) delete state.ageDone[d.k]; else state.ageDone[d.k] = dkey(); save(); render(true); break;
@@ -1127,6 +1120,10 @@
       render(true);
     } else if (el.dataset && el.dataset.hs) {
       state.homeSetup = state.homeSetup || {}; state.homeSetup[el.dataset.hs] = el.checked; save(); render(true);
+    } else if (el.dataset && el.dataset.hb) {
+      const wk = habitWeekKey(); state.habitWeek = state.habitWeek || {}; state.habitWeek[wk] = state.habitWeek[wk] || {};
+      state.habitWeek[wk][el.dataset.hb] = el.checked; const ks = Object.keys(state.habitWeek).sort(); while (ks.length > 8) delete state.habitWeek[ks.shift()];
+      save(); render(true);
     } else if (el.dataset && el.dataset.ms) {
       state.milestones[el.dataset.ms] = el.checked; save(); render(true);
     } else if (el.id === 'packFile' && el.files && el.files[0]) {

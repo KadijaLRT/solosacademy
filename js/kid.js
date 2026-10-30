@@ -45,7 +45,7 @@
   const KS = (ctx) => { const u = ctx.ui; u.kid = u.kid || {}; return u.kid; };
   const T = (ctx, tab) => { const k = KS(ctx); k[tab] = k[tab] || { stack: [], i: 0, drill: 0, step: 0, fi: 0, si: 0 }; return k[tab]; };
   /* Grown-up recordings made in the parent Play tab (Mom's voice) play first when they exist. */
-  const momKey = (ctx, w, lang) => 'mom:' + F().unitOf(ctx).id + ':' + w.en + ':' + lang;
+  const momKey = (ctx, w, lang) => 'mom:' + (w._u || F().unitOf(ctx).id) + ':' + w.en + ':' + lang;
   const hasMom = (ctx, w, lang) => !!(ctx.rec && ctx.rec.has(momKey(ctx, w, lang)));
   const say = (ctx, text, tag, plain) => F().say(ctx, text, tag || 'en-US', false, plain !== false);
   function bar(canBack) {
