@@ -437,7 +437,7 @@
       '<p style="margin:10px 0 2px"><b>' + esc(info.week.title) + '</b><br><span class="muted">' + esc(info.week.focus) + '</span></p>' +
       '<div class="runway"><div class="line"></div><div class="plane" style="left:' + (total ? (8 + (doneN / total) * 84) : 8) + '%">✈️</div></div>' +
       '<div class="row between small"><span>' + doneN + ' of ' + total + ' stops done &middot; about ' + mins + ' min</span><span>' + weeklyActiveDays() + ' of 7 days active</span></div></div>';
-    if (state.unit && !S.themes.some((t) => t.id === state.unit)) { const un = S.units.find((x) => x.id === state.unit); if (un) h += '<div class="card note">Today’s show is <b>' + un.emoji + ' ' + esc(un.name) + '</b>. The Play tab uses its words. This daily plan still follows Trees until a plan for ' + esc(un.name) + ' is added.</div>'; }
+    if (state.unit && !S.themes.some((t) => t.id === state.unit)) { const un = S.units.find((x) => x.id === state.unit); if (un) h += '<div class="card note">Today’s show is <b>' + un.emoji + ' ' + esc(un.name) + '</b>. The Play tab and Games use its words.' + (un.school ? ' This daily plan still follows Trees until a plan for ' + esc(un.name) + ' is added.' : ' It is an open topic, so there is no school plan. The daily plan below still follows Trees as her school support.') + '</div>'; }
     if (info.over) h += '<div class="card note">The 6 ' + esc(info.th.name.toLowerCase()) + ' weeks are complete. You can repeat week 6, or ask her teacher for the next theme. See the Theme tab.</div>';
     if (info.pre) h += '<div class="card note">Your theme starts on ' + esc(startFor(info.th.id)) + '. This is a preview of week 1.</div>';
     const nextId = ids.find((b) => !today[b]);

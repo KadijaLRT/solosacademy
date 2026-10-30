@@ -149,7 +149,10 @@
 
   /* ---------- UNITS (Theme tab) ---------- */
   F.unitChips = function (ctx) {
-    return '<div class="chips">' + SA.units.map((u) => '<button class="chip" aria-pressed="' + (ctx.state.unit === u.id) + '" data-act="unit-set" data-id="' + u.id + '">' + u.emoji + ' ' + ctx.esc(u.name) + (SA.themes.some((t) => t.id === u.id) ? ' 📅' : '') + '</button>').join('') + '</div><p class="small muted">📅 means the unit has a full 6-week daily plan. Each unit weaves language, science, math, movement, art, and feelings around one topic (integrated learning, or a unit study).</p>';
+    const chip = (u) => '<button class="chip" aria-pressed="' + (ctx.state.unit === u.id) + '" data-act="unit-set" data-id="' + u.id + '">' + u.emoji + ' ' + ctx.esc(u.name) + (SA.themes.some((t) => t.id === u.id) ? ' 📅' : '') + '</button>';
+    return '<p class="small muted" style="margin-bottom:4px">Open topics (Solana can also pick these herself in Games):</p><div class="chips">' + SA.units.filter((u) => !u.school).map(chip).join('') + '</div>' +
+      '<p class="small muted" style="margin:10px 0 4px">🏫 From school (CREC units, supporting what she does in class):</p><div class="chips">' + SA.units.filter((u) => u.school).map(chip).join('') + '</div>' +
+      '<p class="small muted">📅 means the topic has a full 6-week daily plan.</p>';
   };
   F.customWords = function (ctx) {
     const esc = ctx.esc; const u = unitOf(ctx); const mine = (ctx.state.customWords || {})[u.id] || [];
@@ -166,7 +169,7 @@
   F.unitPage = function (ctx) {
     const esc = ctx.esc; const u = unitOf(ctx); const mine = (ctx.state.customWords || {})[u.id] || [];
     let h = '<div class="card hero"><b style="font-size:22px">' + u.emoji + ' ' + esc(u.name) + '</b><p>Starter unit. Word cards, Spidey lines, and story time in the Play tab all use this unit. The daily plan on the Today tab still follows Trees until a full plan for this unit is added.</p></div>';
-    h += '<details class="acc" open><summary>6-week plan outline</summary><div class="acc-body"><ol>' + u.weeks.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ol></div></details>';
+    h += '<details class="acc" open><summary>' + (u.school ? '6-week plan outline' : 'Topic outline') + '</summary><div class="acc-body"><ol>' + u.weeks.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ol></div></details>';
     h += '<div class="card"><b>Words</b>' + u.words.concat(mine).map((w, i) => {
       const tl = tlFor(ctx, w);
       return '<div class="row between" style="padding:8px 0;border-bottom:1px solid var(--line)"><div><span style="font-size:28px">' + w.emoji + '</span> <b style="font-size:20px">' + esc(w.en) + '</b> <span class="muted">/ ' + esc(tl.text) + '</span></div>' +

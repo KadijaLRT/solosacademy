@@ -165,12 +165,12 @@
   }
   /* Wrong try: say what she picked, then ask her to try again. */
   function sayWrong(ctx, g, it) {
-    const f = F(); const es = focus(ctx) === 'es' && g.lang === 'tl'; let text; let tag = 'en-US';
+    const f = F(); let text; let tag = 'en-US';
     if (g.sec === 'letters') text = 'That is the letter ' + it.l.toUpperCase() + '. Try again!';
     else if (g.sec === 'words') {
-      if (g.lang === 'tl') { tag = it.tl.tag; text = es ? 'Eso es ' + it.tl.text + '. ¡Inténtalo otra vez!' : it.tl.text; }
-      else text = 'That is the ' + it.en + '. Try again!';
-    } else if (es) { tag = ctx.LBY.es.tts; text = it.es + '. ¡Inténtalo otra vez!'; }
+      if (g.lang === 'tl') return thenPraise(ctx, it.tl.text + '.', it.tl.tag, 'Try again!', false, 2200);
+      text = 'That is the ' + it.en + '. Try again!';
+    } else if (esOn(ctx, g)) return thenPraise(ctx, it.es + '.', ctx.LBY.es.tts, 'Try again!', false, 2200);
     else if (g.sec === 'shapes') text = 'That is a ' + it.en + '. Try again!';
     else text = 'That is ' + it.en + '. Try again!';
     return f.say(ctx, text, tag, false, g.sec === 'letters');
@@ -253,32 +253,32 @@
 
   /* ---------- spoken instructions ("how to play") ---------- */
   const HOW = {
-    hub: ['Pick a game! Pop balloons, match things, count, sing, or build a word. Finish a game to add a color to your rainbow.', 'Elige un juego. Revienta globos, empareja, cuenta o canta. Al terminar un juego, ganas un color del arcoíris.'],
-    popL: ['Pop the balloon with the letter I say. Tap the right balloon. Pop five balloons to add a color to your rainbow!', null],
-    popW: ['Listen to the word. Tap the balloon with the right picture. Pop five balloons to add a color to your rainbow!', 'Escucha la palabra. Toca el globo con el dibujo correcto. ¡Revienta cinco globos y gana un color del arcoíris!'],
-    popN: ['Listen to the number I say. Tap the balloon with that number. Pop five balloons to add a color to your rainbow!', 'Escucha el número. Toca el globo con ese número. ¡Revienta cinco globos y gana un color del arcoíris!'],
-    popC: ['Listen to the color I say. Tap the balloon that is that color. Pop five balloons to add a color to your rainbow!', 'Escucha el color. Toca el globo de ese color. ¡Revienta cinco globos y gana un color del arcoíris!'],
-    popS: ['Listen to the shape I say. Tap the balloon with that shape. Pop five balloons to add a color to your rainbow!', 'Escucha la forma. Toca el globo con esa forma. ¡Revienta cinco globos y gana un color del arcoíris!'],
-    dragL: ['Drag each big letter to its little letter. You can also tap a big letter, then tap its spot.', null],
-    dragW: ['Drag each picture to its shadow. You can also tap a picture, then tap its shadow.', 'Arrastra cada dibujo a su sombra. También puedes tocar el dibujo y luego su sombra.'],
-    dragN: ['Drag each number to the group with that many things. You can also tap a number, then tap its group.', 'Arrastra cada número al grupo que tiene esa cantidad. También puedes tocar el número y luego su grupo.'],
-    dragC: ['Drag each color to the circle with the same color. You can also tap a color, then tap its circle.', 'Arrastra cada color al círculo del mismo color. También puedes tocar el color y luego su círculo.'],
-    dragS: ['Drag each shape to its shadow. You can also tap a shape, then tap its shadow.', 'Arrastra cada forma a su sombra. También puedes tocar la forma y luego su sombra.'],
-    sound: ['Listen to the word and look at the picture. Pop the balloon with the letter the word starts with. Sometimes it is the letter at the end!', null],
-    add: ['Listen to the problem and look at the pictures. Pop the balloon with the answer.', 'Escucha el problema y mira los dibujos. Revienta el globo con la respuesta.'],
-    build: ['Look at the picture. Drag the missing letters into the empty boxes to spell the word.', null],
-    count: ['Put the right number of things in the basket. Drag them in one at a time and count out loud with me!', 'Pon la cantidad correcta en la canasta. Arrástralos uno por uno y cuenta conmigo.'],
-    sing: ['Press the sing button and sing along with me. Press the clap button to clap!', 'Toca el botón de cantar y canta conmigo. Toca el botón de aplaudir y aplaude.']
+    hub: ['Pick a game. Finish it to add a color to your rainbow!', null],
+    popL: ['Tap the balloon with the letter I say. Pop five!', null],
+    popW: ['Tap the balloon with the right picture. Pop five!', null],
+    popN: ['Tap the balloon with the number I say. Pop five!', null],
+    popC: ['Tap the balloon with the color I say. Pop five!', null],
+    popS: ['Tap the balloon with the shape I say. Pop five!', null],
+    dragL: ['Drag each big letter to its little letter.', null],
+    dragW: ['Drag each picture to its shadow.', null],
+    dragN: ['Drag each number to the group with that many.', null],
+    dragC: ['Drag each color to the same color.', null],
+    dragS: ['Drag each shape to its shadow.', null],
+    sound: ['Listen. Tap the letter the word starts with. Sometimes it ends with it!', null],
+    add: ['Listen to the problem. Tap the answer.', null],
+    build: ['Drag the missing letters into the boxes.', null],
+    count: ['Drag the right number into the basket. Count with me!', null],
+    sing: ['Press sing and sing with me. Press clap to clap!', null]
   };
   function howKey(g) {
     if (g.screen !== 'play') return 'hub';
     if (g.game === 'pop' || g.game === 'drag') return g.game + SUFFIX[g.sec];
     return g.game;
   }
-  /* Spanish is used only when she is practicing Spanish. Everything else is English. */
+  /* Instructions and praise are always English. Only the practice words use her second language. */
   function sayHow(ctx, g, key, onend) {
-    const t = HOW[key]; const es = !!t[1] && g.sec !== 'letters' && g.lang === 'tl' && focus(ctx) === 'es';
-    return F().say(ctx, es ? t[1] : t[0], es ? ctx.LBY.es.tts : 'en-US', false, true, onend);
+    const t = HOW[key];
+    return F().say(ctx, t[0], 'en-US', false, true, onend);
   }
   const helpOn = (ctx) => ctx.state.gameHelp !== false;
 
@@ -336,12 +336,20 @@
   function previewBar(ctx) {
     return previewing(ctx) ? '<div class="pvbar"><span>👀 Preview. Nothing is saved.</span><button class="btn alt small" data-act="gexit">◀ Back to settings</button></div>' : '';
   }
+  function S_fun_unit(ctx, id) { SA.fun.handle('unit-set', { id: id }, ctx); }
   function hub(ctx, g) {
     const st = ctx.state; const u = F().unitOf(ctx); const c = cfg(ctx); const n = st.rbBands || 0;
     const secs = SECS.filter((k) => c.secs[k]);
     return '<div class="card gtop"><div class="rbcol">' + rainbow(n, true) + '<div class="small muted">' + n + ' of 7 · 🌈 ' + (st.rainbows || 0) + '</div></div>' +
       '<button class="iconbtn" data-act="ghow" aria-label="How to play">❓</button></div>' +
-      '<div class="gbtns n4 secs">' + secs.map((k) => '<button class="gbig" data-act="gsec" data-s="' + k + '"><span>' + secLabel(k, u).split(' ')[0] + '</span>' + ctx.esc(secLabel(k, u).split(' ').slice(1).join(' ')) + '</button>').join('') + '</div>';
+      '<div class="gbtns n4 secs">' + secs.map((k) => '<button class="gbig" data-act="gsec" data-s="' + k + '"><span>' + secLabel(k, u).split(' ')[0] + '</span>' + ctx.esc(secLabel(k, u).split(' ').slice(1).join(' ')) + '</button>').join('') + '<button class="gbig" data-act="gtopics"><span>🧩</span>Topics</button></div>';
+  }
+  /* Solana's pick-a-topic screen: every topic is one picture tile. School units carry a small school badge. */
+  function topicsView(ctx, g) {
+    const cur = ctx.state.unit;
+    const tiles = (SA.topicOrder || SA.units.map((u) => u.id)).map((id) => SA.units.find((u) => u.id === id)).filter(Boolean).map((u) =>
+      '<button class="gbig" style="background:linear-gradient(160deg,' + u.c2 + ',' + u.c1 + ')" aria-pressed="' + (cur === u.id) + '" data-act="gtopic" data-id="' + u.id + '"><span>' + u.emoji + '</span>' + ctx.esc(u.name) + (u.school ? ' 🏫' : '') + '</button>').join('');
+    return '<div class="gbar"><button class="btn alt backbtn" data-act="gback" aria-label="Back">◀</button><span></span><span></span></div><div class="gbtns n4 secs">' + tiles + '</div>';
   }
   function secView(ctx, g) {
     const games = gamesFor(ctx, g.sec); const u = F().unitOf(ctx);
@@ -425,13 +433,13 @@
     if (g.game === 'sound') { const p = g.pop; return 'Which letter does ' + p.word + (p.end ? ' end' : ' start') + ' with?'; }
     if (g.game === 'add') {
       const p = g.pop; const A = SA.numbers[p.a - 1]; const B = SA.numbers[p.b - 1]; const es2 = esOn(ctx, g);
-      return es2 ? '¿Cuánto es ' + A.es + (p.sub ? ' menos ' : ' más ') + B.es + '?' : 'What is ' + A.en + (p.sub ? ' take away ' : ' plus ') + B.en + '?';
+      return 'What is ' + A.en + (p.sub ? ' take away ' : ' plus ') + B.en + '?';
     }
     if (sentenceOn(ctx, g, t)) return g.lang === 'tl' ? t.spEs : t.sp;
     if (g.sec === 'letters') return 'Pop the letter ' + t.l + '!';
     if (g.sec === 'words' && g.lang === 'tl') return nm + '!';
-    if (g.sec === 'numbers') return es ? '¡Revienta el número ' + t.es + '!' : 'Pop the number ' + t.en + '!';
-    if (g.sec === 'colors') return es ? '¡Revienta el globo ' + t.es + '!' : 'Pop the ' + nm + ' balloon!';
+    if (g.sec === 'numbers') return es ? t.es + '!' : 'Pop the number ' + t.en + '!';
+    if (g.sec === 'colors') return es ? t.es + '!' : 'Pop the ' + nm + ' balloon!';
     if (es) return nm + '!';
     return 'Pop the ' + nm + '!';
   }
@@ -451,7 +459,7 @@
   function promptSay(ctx, g) {
     const t = g.pop.target; const f = F();
     if (g.game === 'sound') return f.say(ctx, g.pop.word + '. ' + popPrompt(ctx, g, t), 'en-US', false, true);
-    if (g.game === 'add') return f.say(ctx, popPrompt(ctx, g, t), esOn(ctx, g) ? ctx.LBY.es.tts : 'en-US', false, true);
+    if (g.game === 'add') return f.say(ctx, popPrompt(ctx, g, t), 'en-US', false, true);
     if (sentenceOn(ctx, g, t)) return f.say(ctx, popPrompt(ctx, g, t), g.lang === 'tl' ? t.tl.tag : 'en-US');
     if (g.sec === 'letters') return f.say(ctx, popPrompt(ctx, g, t), 'en-US', false, true);
     if (g.sec === 'words' && g.lang === 'tl') return f.say(ctx, t.tl.text, t.tl.tag);
@@ -547,7 +555,7 @@
       const es = g.lang === 'tl' && focus(ctx) === 'es'; const tag = es ? ctx.LBY.es.tts : 'en-US';
       const max = Math.min(rangeMax(ctx), 10);
       SA.numbers.filter((x) => x.n <= max).forEach((x) => lines.push({ t: (es ? x.es : x.en) + '!', tag, html: '<b>' + x.n + '</b> ' + (es ? x.es : x.en) }));
-      lines.push({ t: es ? '¡Aplaude, aplaude, aplaude!' : 'Clap, clap, clap!', tag, html: '👏 ' + (es ? 'Aplaude, aplaude, aplaude!' : 'Clap, clap, clap!') });
+      lines.push({ t: 'Clap, clap, clap!', tag: 'en-US', html: '👏 Clap, clap, clap!' });
       g.sing = { it: null, big: '🔢', lines, claps: 0, playing: false, last: '' };
       return;
     }
@@ -556,7 +564,7 @@
     const W = it.en;
     if (g.lang === 'tl') {
       const T = it.tl.text; const tag = it.tl.tag;
-      if (focus(ctx) === 'es') { lines.push({ t: '¡' + T + ', ' + T + ', ' + T + '!', tag }, { t: '¡Mira ' + T + '!', tag }, { t: '¡Aplaude, aplaude, aplaude!', tag }); }
+      if (focus(ctx) === 'es') { lines.push({ t: '¡' + T + ', ' + T + ', ' + T + '!', tag }, { t: 'Clap, clap, clap!', tag: 'en-US' }); }
       else lines.push({ t: T + ', ' + T + ', ' + T + '!', tag });
     } else {
       lines.push({ t: W + ', ' + W + ', ' + W + '!', tag: 'en-US' }, { t: 'I see the ' + W + '. Clap, clap, clap!', tag: 'en-US' }, { t: 'Hello, ' + W + '! Wave bye-bye!', tag: 'en-US' });
@@ -604,6 +612,7 @@
     if (g.screen === 'hub') h += '<h2>Games</h2>';
     if (g.screen === 'letter') return h + letterCard(ctx, g);
     if (g.screen === 'lgrid') return h + lgridView(ctx, g);
+    if (g.screen === 'topics') return h + topicsView(ctx, g);
     if (g.screen === 'sec') return h + secView(ctx, g);
     if (g.screen === 'done') return h + doneView(ctx, g);
     if (g.screen === 'play') {
@@ -692,6 +701,8 @@
       case 'gprac': cfg(ctx).practice = d.p === '1'; ctx.save(); ctx.render(true); return true;
       case 'gpreview': g.preview = true; g.screen = 'hub'; g.game = null; g.tok++; ctx.render(false); return true;
       case 'gexit': g.preview = false; g.screen = 'hub'; g.game = null; g.tok++; g.lock = false; if (ctx.rec.active()) ctx.rec.stop(); try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) { /* ignore */ } ctx.render(false); return true;
+      case 'gtopics': g.screen = 'topics'; ctx.render(false); f.say(ctx, 'Pick a topic', 'en-US', false, true); return true;
+      case 'gtopic': { S_fun_unit(ctx, d.id); g.sec = 'words'; g.screen = 'sec'; ctx.render(false); f.say(ctx, f.unitOf(ctx).name, 'en-US', false, true); return true; }
       case 'glgrid': g.screen = 'lgrid'; ctx.render(false); return true;
       case 'ghub': g.screen = 'hub'; g.game = null; g.tok++; ctx.render(false); return true;
       case 'gstart': startGame(ctx, g, d.g); return true;

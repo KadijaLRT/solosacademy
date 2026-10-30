@@ -130,3 +130,9 @@ Theme tab (grown-up view), tap the unit at the top: Trees, Water, Community Help
 ## Less reading (grown-up view)
 
 Because long text is hard to scan, the grown-up view hides helper paragraphs behind a small ⓘ button (tap it to read). Today leads with a "Next stop" card and a one-line progress summary, and the parent move of the day is collapsed to its title. Turn it off in Settings, Look, Less reading.
+
+## Topics (open shelf)
+Games has a Topics button. Solana taps a picture tile (Days of the week, Months, Seasons and weather, Space and planets, My body, Animals, plus the five school units marked with a school badge) and the games switch to that topic's words. The CREC units stay as supporting topics. To add a topic, push one more object to `SA.units` in `js/data-topics.js`.
+
+## Spoken language
+All instructions, hints and praise are in English. Only the practice words and short word sentences use her second language.
