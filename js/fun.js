@@ -60,6 +60,11 @@
     }).join('');
     return '<div class="card"><b>🎙 Mom’s voice</b>' + (child ? '' : '<p class="small muted">Do your best character voice, then tap Stop. One clip per word and language, up to 20 seconds. Clips stay on this device.</p>') + btns + '</div>';
   }
+  /* Story character: Spidey by default; the grown-up can pick another from her favorite shows, or Solana herself. */
+  const HEROES = [['spidey', '🕷️', 'Spidey'], ['solana', '👧', ''], ['ghost', '🕸️', 'Ghost-Spider'], ['spin', '🕷️', 'Spin'], ['mirabel', '🦋', 'Mirabel'], ['simba', '🦁', 'Simba'], ['elsa', '❄️', 'Elsa'], ['poppy', '🌈', 'Poppy'], ['tarzan', '🌴', 'Tarzan']];
+  F.heroes = HEROES;
+  F.hero = function (ctx) { const h = HEROES.find((x) => x[0] === ctx.state.hero) || HEROES[0]; return { id: h[0], e: h[1], name: h[2] || ctx.state.nick || 'Solana' }; };
+  F.H = function (ctx, str) { return String(str || '').replace(/Spidey/g, F.hero(ctx).name); };
   F.say = say; F.unitOf = unitOf; F.wordsOf = wordsOf; F.tlFor = tlFor;
   function chipRow(ctx, items, cur, act, key) {
     return '<div class="chips">' + items.map((t) => '<button class="chip" aria-pressed="' + (cur === t[0]) + '" data-act="' + act + '" data-' + key + '="' + ctx.esc(t[0]) + '">' + t[1] + '</button>').join('') + '</div>';
@@ -84,10 +89,10 @@
     const wi = weeks.findIndex((x) => x[0] === p.wk); const nextWk = weeks[(wi + 1) % weeks.length][0];
     h += '<div class="card center play-card"><div class="big-em">' + w.emoji + '</div><div class="big-word">' + esc(w.en) + '</div>' +
       (p.show ? '<div class="big-word tl' + (tl.rtl ? ' rtl' : '') + '">' + esc(tl.text) + '</div>' + (tl.sound ? '<p><span class="pill">Sounds like: ' + esc(tl.sound) + '</span></p>' : '') : '<p class="muted small">Tap the language button to reveal the word.</p>') +
-      '<p style="font-size:19px">' + esc(w.spidey) + '</p>' +
+      '<p style="font-size:19px">' + esc(F.H(ctx, w.spidey)) + '</p>' +
       '<div class="row" style="justify-content:center"><button class="btn" data-act="pspeak" data-k="en">🔊 English</button>' +
       '<button class="btn coral" data-act="pspeak" data-k="tl">' + tl.flag + ' ' + esc(tl.name) + '</button></div>' +
-      '<p><button class="btn sun" data-act="pspeak" data-k="sp">🕷️ Hear Spidey say it</button></p></div>' + momCard(ctx, w, tl) +
+      '<p><button class="btn sun" data-act="pspeak" data-k="sp">' + F.hero(ctx).e + ' Hear ' + esc(F.hero(ctx).name) + ' say it</button></p></div>' + momCard(ctx, w, tl) +
       '<div class="row between"><button class="btn alt" data-act="pnav" data-d="-1" aria-label="Previous word">◀</button>' +
       '<button class="btn ' + (done ? 'sun' : 'alt') + '" style="flex:1" data-act="plearn">' + (done ? '⭐ Learned!' : '☆ Mark learned') + '</button>' +
       '<button class="btn alt" data-act="pnav" data-d="1" aria-label="Next word">▶</button></div>' +
@@ -114,14 +119,14 @@
   F.p_story = function (ctx, p) {
     const esc = ctx.esc; const u = unitOf(ctx); const list = wordsOf(ctx, u);
     const w = list[((p.si % list.length) + list.length) % list.length];
-    const sentences = [w.en, 'Spidey sees the ' + w.en + '.', 'Spidey sees the big ' + w.en + ' and says, "Wow!"'];
+    const hn = F.hero(ctx).name; const sentences = [w.en, hn + ' sees the ' + w.en + '.', hn + ' sees the big ' + w.en + ' and says, "Wow!"'];
     const fb = u.feelings[p.fi % u.feelings.length];
     return voiceRow(ctx) + '<div class="card center play-card"><div class="big-em">' + w.emoji + '</div><div class="small muted">' + esc(w.en) + ' / ' + esc(w.es) + '</div>' +
       chipRow(ctx, [[1, '1 word'], [2, 'Short'], [3, 'Longer']].map((x) => [String(x[0]), x[1]]), String(p.lvl), 'plvl', 'n') +
       '<div class="big-word" style="font-size:28px">' + esc(sentences[p.lvl - 1]) + '</div>' +
       '<div class="row" style="justify-content:center"><button class="btn" data-act="psay" data-text="' + esc(sentences[p.lvl - 1]) + '">🔊 Say it</button>' +
       '<button class="btn alt" data-act="pnext-story">Next word ▶</button></div>' +
-      '<p><button class="btn coral" data-act="pai"' + (p.busy ? ' disabled' : '') + '>' + (p.busy ? 'Spidey is thinking...' : '🕷️ Ask Spidey for a new story line') + '</button></p>' +
+      '<p><button class="btn coral" data-act="pai"' + (p.busy ? ' disabled' : '') + '>' + (p.busy ? F.hero(ctx).name + ' is thinking...' : F.hero(ctx).e + ' Ask ' + esc(F.hero(ctx).name) + ' for a new story line') + '</button></p>' +
       (ctx.isChild() ? '' : '<p class="small muted">Optional. Needs the internet and the hosted version with a Groq key. It sends only the word and unit name.</p>') +
       (p.ai ? '<div class="say" style="text-align:left;white-space:pre-line">' + esc(p.ai) + '</div>' : '') + '</div>' +
       '<div class="card"><b>Feelings in the ' + esc(u.name) + ' story</b><p style="font-size:19px">' + esc(fb.q) + '</p>' +
@@ -222,7 +227,7 @@
         const w = cur(); if (!w) return true; const tl = tlFor(ctx, w);
         if (d.k === 'en') say(ctx, w.en, 'en-US');
         else if (d.k === 'tl') { p.show = true; ctx.render(true); if (!say(ctx, tl.text, tl.tag)) ctx.toast('No ' + tl.name + ' voice on this device.'); }
-        else say(ctx, w.spidey, 'en-US');
+        else say(ctx, F.H(ctx, w.spidey), 'en-US');
         return true;
       }
       case 'plearn': { const w = cur(); if (!w) return true; const k = unitOf(ctx).id + ':' + w.en; st.fmastered = st.fmastered || {}; st.fmastered[k] = !st.fmastered[k]; ctx.save(); ctx.render(true); if (st.fmastered[k]) ctx.toast('Learned! ⭐'); return true; }

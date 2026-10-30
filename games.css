@@ -124,3 +124,32 @@
 .info { border: 2px solid var(--ink, #2b2250); background: #fff; color: var(--ink, #2b2250); border-radius: 50%; width: 28px; height: 28px; font-size: 15px; line-height: 1; padding: 0; cursor: pointer; margin: 2px 0; }
 .stats { display: flex; flex-wrap: wrap; gap: 8px 14px; font-weight: 800; font-size: 18px; margin: 6px 0; }
 .nextstop { font-size: 18px; }
+
+/* ---- Grow tab: tile home and simple screens ---- */
+.gtile { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; border: 3px solid var(--ink); border-radius: 18px; background: #fff; color: var(--ink); font: inherit; padding: 14px; min-height: 112px; cursor: pointer; box-shadow: 4px 4px 0 var(--ink); }
+.gtile:nth-child(4n+1) { background: #fff3c4; } .gtile:nth-child(4n+2) { background: #d7f3ff; } .gtile:nth-child(4n+3) { background: #ffdbe4; } .gtile:nth-child(4n+4) { background: #d8f7dc; }
+.gtile:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+.gt-em { font-size: 34px; line-height: 1; } .gt-st { font-size: 13px; opacity: .8; font-weight: 600; }
+.gback { display: flex; align-items: center; gap: 10px; margin: 6px 0 12px; }
+.grid.g2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.area { padding: 10px; } .area summary { cursor: pointer; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.area summary::-webkit-details-marker { display: none; } .area-em { font-size: 30px; line-height: 1; } .area[open] { grid-column: 1 / -1; }
+.lvrow { display: flex; align-items: center; gap: 10px; margin: 8px 0; } .lvem { font-size: 28px; }
+
+/* ---- no accidental zoom: double-tap and focus zoom off ---- */
+html, body, button, a, .gbig, .balloon, .tile, .slot, .gtile, .chip, .wc { touch-action: manipulation; }
+input, select, textarea { font-size: 16px; }
+html { -webkit-text-size-adjust: 100%; }
+
+/* ---- vector icons ---- */
+.ic { width: 1em; height: 1em; display: block; overflow: visible; }
+.gbig span .ic { width: 58px; height: 58px; }
+.gtile .gt-em .ic { width: 46px; height: 46px; }
+.tabs button span .ic { width: 28px; height: 28px; margin: 0 auto; }
+.big-em .ic { width: 110px; height: 110px; margin: 0 auto; }
+.feel-card .ic { width: 52px; height: 52px; margin: 0 auto; }
+.pathbig { grid-column: 1 / -1; flex-direction: row; gap: 16px; background: linear-gradient(160deg, #ffe08a, #ff9fb2) !important; font-size: 22px; }
+.pathbig span .ic { width: 64px; height: 64px; }
+.em .ic, .em svg { width: 1em; height: 1em; }
+.balloon b.em .ic { width: 72px; height: 72px; }
+.cue-e .ic { width: 1em; height: 1em; }

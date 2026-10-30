@@ -140,3 +140,10 @@ All instructions, hints and praise are in English. Only the practice words and s
 ## Tabs
 Grown-up view: Today, Learn (topic play and word bank), Games, School (CREC unit), Grow (includes a Feelings log of what Solana taps), Activities.
 Solana's view: Games, Learn, Feelings. Recordings you make in Learn (Mom's voice) play on her word cards.
+
+## Let's go! (guided path)
+The first tile on Solana's Games screen walks her through up to five short games in a row (letters, numbers, topic words, colors or shapes, then a song), with dots showing progress. When she finishes, the tile turns into a check and says "Play again!". Icons are original vector art in `js/icons.js`.
+
+## Natural English voice (optional)
+Settings > Languages and voice > Natural English voice. Uses `api/tts.js` (Groq Orpheus, English only) with the same `GROQ_API_KEY`.
+First time, accept the model terms in the Groq console. Lines are cached on the device. Spanish, singing and character voices stay on the device voice. If it fails, the device voice plays instead.

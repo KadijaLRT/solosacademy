@@ -56,7 +56,7 @@
   const topicStyle = (u) => 'background:linear-gradient(160deg,' + u.c2 + ',' + u.c1 + ')';
   function topicTiles(ctx) {
     return (SA.topicOrder || SA.units.map((u) => u.id)).map((id) => SA.units.find((u) => u.id === id)).filter(Boolean)
-      .map((u) => tile('ktopic', 'data-id="' + u.id + '"', u.emoji, ctx.esc(u.name) + (u.school ? ' 🏫' : ''), topicStyle(u))).join('');
+      .map((u) => tile('ktopic', 'data-id="' + u.id + '"', SA.topicIc(u), ctx.esc(u.name) + (u.school ? ' 🏫' : ''), topicStyle(u))).join('');
   }
   K.view = function (ctx, tab) {
     const t = T(ctx, tab); const scr = t.stack.length ? t.stack[t.stack.length - 1] : 'hub';
@@ -69,17 +69,17 @@
 
   /* ---------- PLAY ---------- */
   K.v_learn_hub = function (ctx) {
-    return grid(tile('kopen', 'data-t="learn" data-s="topics"', '🃏', 'Word cards') + tile('kopen', 'data-t="learn" data-s="songs"', '🎵', 'Sing') + tile('kopen', 'data-t="learn" data-s="story"', '🕷️', 'Story') + tile('kopen', 'data-t="learn" data-s="langs"', '🗣️', 'Words'));
+    return grid(tile('kopen', 'data-t="learn" data-s="topics"', SA.ic('cards'), 'Word cards') + tile('kopen', 'data-t="learn" data-s="songs"', SA.ic('music'), 'Sing') + tile('kopen', 'data-t="learn" data-s="story"', SA.ic('story'), 'Story') + tile('kopen', 'data-t="learn" data-s="langs"', SA.ic('words'), 'Words'));
   };
   K.v_learn_topics = function (ctx) { return bar(true) + grid(topicTiles(ctx)); };
   K.v_learn_cards = function (ctx, t) {
     const u = F().unitOf(ctx); const list = F().wordsOf(ctx, u); t.i = ((t.i % list.length) + list.length) % list.length; const w = list[t.i]; const tl = F().tlFor(ctx, w);
-    return bar(true) + '<div class="card center gcard"><div class="big-em" style="font-size:96px">' + w.emoji + '</div><div class="big-word">' + ctx.esc(w.en) + '</div>' +
+    return bar(true) + '<div class="card center gcard"><div class="big-em">' + SA.pic(w.emoji, w.en) + '</div><div class="big-word">' + ctx.esc(w.en) + '</div>' +
       '<div class="row" style="justify-content:center;margin-top:8px"><button class="btn iconbtn big" data-act="ksay" data-k="en" aria-label="English">🇺🇸</button><button class="btn coral iconbtn big" data-act="ksay" data-k="tl" aria-label="' + ctx.esc(tl.name) + '">' + tl.flag + '</button></div>' +
       '<div class="row between" style="margin-top:14px"><button class="btn alt iconbtn big" data-act="knav" data-d="-1" aria-label="Previous">◀</button><button class="btn sun iconbtn big" data-act="knav" data-d="1" aria-label="Next">▶</button></div></div>';
   };
   K.v_learn_songs = function (ctx) {
-    return bar(true) + grid(SA.songDrills.map((d, i) => tile('kdrill', 'data-i="' + i + '"', d.emoji, ctx.esc(d.movie))).join(''));
+    return bar(true) + grid(SA.songDrills.map((d, i) => tile('kdrill', 'data-i="' + i + '"', SA.ic('music'), ctx.esc(d.movie))).join(''));
   };
   K.v_learn_song = function (ctx, t) {
     const dr = SA.songDrills[t.drill]; const s = dr.steps[t.step];
@@ -89,7 +89,7 @@
   };
   K.v_learn_story = function (ctx, t) {
     const u = F().unitOf(ctx); const list = F().wordsOf(ctx, u); const w = list[((t.si % list.length) + list.length) % list.length];
-    return bar(true) + '<div class="card center gcard"><div class="big-em" style="font-size:96px">' + w.emoji + '</div><div class="big-word" style="font-size:26px">Spidey sees the ' + ctx.esc(w.en) + '.</div>' +
+    return bar(true) + '<div class="card center gcard"><div class="big-em">' + SA.pic(w.emoji, w.en) + '</div><div class="big-word" style="font-size:26px">' + ctx.esc(F().hero(ctx).name) + ' sees the ' + ctx.esc(w.en) + '.</div>' +
       '<div class="row" style="justify-content:center;margin-top:8px"><button class="btn iconbtn big" data-act="ksay" data-k="story" aria-label="Hear it">🔊</button><button class="btn sun iconbtn big" data-act="kstory" aria-label="Next">▶</button></div></div>';
   };
 
@@ -114,20 +114,25 @@
 
   /* ---------- FEELINGS ---------- */
   K.v_feel_hub = function (ctx) {
-    return grid(tile('kopen', 'data-t="feel" data-s="faces"', '😊', 'My feeling') + tile('kopen', 'data-t="feel" data-s="breath"', '✈️', 'Breathe') + tile('kopen', 'data-t="feel" data-s="quiz"', '🎭', 'Story faces'));
+    return grid(tile('kopen', 'data-t="feel" data-s="faces"', SA.faceIc('happy'), 'My feeling') + tile('kopen', 'data-t="feel" data-s="breath"', SA.ic('plane'), 'Breathe') + tile('kopen', 'data-t="feel" data-s="movies"', SA.ic('movie'), 'Story faces'));
   };
   K.v_feel_faces = function (ctx, t) {
     const sel = t.pick ? ctx.S.feelings.find((x) => x.id === t.pick) : null;
-    return bar(true) + (sel ? '<div class="card center gcard"><div class="big-em" style="font-size:96px">' + sel.e + '</div><div class="big-word">' + ctx.esc(sel.name) + '</div></div>' : '') +
-      '<div class="gbtns n4 secs" style="grid-template-columns:repeat(3,1fr)">' + ctx.S.feelings.map((f) => tile('kfeel', 'data-id="' + f.id + '"', f.e, ctx.esc(f.name), 'background:' + f.color + '55')).join('') + '</div>';
+    return bar(true) + (sel ? '<div class="card center gcard"><div class="big-em">' + SA.faceIc(sel.id) + '</div><div class="big-word">' + ctx.esc(sel.name) + '</div></div>' : '') +
+      '<div class="gbtns n4 secs" style="grid-template-columns:repeat(3,1fr)">' + ctx.S.feelings.map((f) => tile('kfeel', 'data-id="' + f.id + '"', SA.faceIc(f.id), ctx.esc(f.name), 'background:' + f.color + '55')).join('') + '</div>';
   };
   K.v_feel_breath = function () {
     return bar(true) + '<div class="card breath center gcard"><div class="plane" id="bplane">✈️</div><div class="count" id="bcount">✈️</div><button class="btn sun iconbtn big" data-act="breath-start" aria-label="Start">▶</button></div>';
   };
+  K.v_feel_movies = function (ctx) {
+    const u = F().unitOf(ctx);
+    return bar(true) + grid(SA.movies.map((m) => tile('kmovie', 'data-id="' + m.id + '"', m.e, ctx.esc(m.title))).join('') + tile('kmovie', 'data-id="topic"', u.emoji, ctx.esc(u.name), topicStyle(u)));
+  };
+  function quizList(ctx, t) { const m = SA.movies.find((x) => x.id === t.mv); return m ? { e: m.e, qs: m.qs } : { e: F().unitOf(ctx).emoji, qs: F().unitOf(ctx).feelings }; }
   K.v_feel_quiz = function (ctx, t) {
-    const u = F().unitOf(ctx); const fb = u.feelings[t.fi % u.feelings.length];
-    return bar(true) + '<div class="card center gcard"><div class="big-em">' + u.emoji + '</div><div class="gprompt">' + ctx.esc(fb.q) + '</div></div>' +
-      '<div class="gbtns n4 secs" style="grid-template-columns:repeat(3,1fr)">' + SA.playFeelings.map((f) => tile('kfq', 'data-id="' + f.id + '"', f.emoji, ctx.esc(f.id))).join('') + '</div>';
+    const z = quizList(ctx, t); const fb = z.qs[t.fi % z.qs.length];
+    return bar(true) + '<div class="card center gcard"><div class="big-em">' + z.e + '</div><div class="gprompt">' + ctx.esc(fb.q) + '</div></div>' +
+      '<div class="gbtns n4 secs" style="grid-template-columns:repeat(3,1fr)">' + SA.playFeelings.map((f) => tile('kfq', 'data-id="' + f.id + '"', SA.faceIc(f.id), ctx.esc(f.id))).join('') + '</div>';
   };
 
   /* ---------- spoken text for the current screen ---------- */
@@ -135,10 +140,10 @@
     const tab = ctx.ui.kidTab; const t = T(ctx, tab); const scr = t.stack.length ? t.stack[t.stack.length - 1] : 'hub';
     const u = F().unitOf(ctx);
     if (scr === 'cards') { const list = F().wordsOf(ctx, u); const w = list[((t.i % list.length) + list.length) % list.length]; if (hasMom(ctx, w, 'en')) { ctx.rec.play(momKey(ctx, w, 'en')); return true; } return say(ctx, w.en, 'en-US', false); }
-    if (scr === 'story') { const list = F().wordsOf(ctx, u); const w = list[((t.si % list.length) + list.length) % list.length]; return say(ctx, 'Spidey sees the ' + w.en + '.'); }
+    if (scr === 'story') { const list = F().wordsOf(ctx, u); const w = list[((t.si % list.length) + list.length) % list.length]; return say(ctx, F().hero(ctx).name + ' sees the ' + w.en + '.'); }
     if (scr === 'song') return K.sing(ctx, SA.songDrills[t.drill].steps[t.step].say, 'en-US');
-    if (scr === 'quiz') return say(ctx, u.feelings[t.fi % u.feelings.length].q);
-    const label = { 'learn:hub': 'Pick one', 'learn:topics': 'Pick a topic', 'learn:songs': 'Pick a song', 'learn:langs': 'Pick a language', 'learn:cats': 'Pick one', 'learn:list': 'Tap a picture', 'feel:hub': 'Pick one', 'feel:faces': 'How do you feel?', 'feel:breath': 'Let us fly and breathe' }[tab + ':' + scr];
+    if (scr === 'quiz') { const z = quizList(ctx, t); return say(ctx, z.qs[t.fi % z.qs.length].q); }
+    const label = { 'learn:hub': 'Pick one', 'learn:topics': 'Pick a topic', 'learn:songs': 'Pick a song', 'learn:langs': 'Pick a language', 'learn:cats': 'Pick one', 'learn:list': 'Tap a picture', 'feel:hub': 'Pick one', 'feel:movies': 'Pick a show', 'feel:faces': 'How do you feel?', 'feel:breath': 'Let us fly and breathe' }[tab + ':' + scr];
     return label ? say(ctx, label) : false;
   }
   K.enter = function (ctx) { setTimeout(() => speakScreen(ctx), 250); };
@@ -166,8 +171,9 @@
       case 'kwcat': t.cat = d.c; t.stack.push('list'); ctx.render(false); K.enter(ctx); return true;
       case 'kword': { const x = (t.items || [])[+d.i]; if (x && !F().say(ctx, x.text, x.tag)) ctx.toast('No voice for this language on this device.'); return true; }
       case 'kfeel': { const f = ctx.S.feelings.find((x) => x.id === d.id); t.pick = d.id; ctx.state.feelLog = ctx.state.feelLog || {}; ctx.state.feelLog[ctx.dkey()] = d.id; ctx.save(); ctx.render(false); if (f) say(ctx, 'You feel ' + f.name + '.'); return true; }
+      case 'kmovie': t.mv = d.id === 'topic' ? null : d.id; t.fi = 0; t.stack.push('quiz'); ctx.render(false); speakScreen(ctx); return true;
       case 'kfq': {
-        const fb = u.feelings[t.fi % u.feelings.length];
+        const z = quizList(ctx, t); const fb = z.qs[t.fi % z.qs.length];
         if (d.id === fb.a) { t.fi += 1; say(ctx, 'Yes! ' + d.id + '!'); setTimeout(() => { ctx.render(false); speakScreen(ctx); }, 1400); } else say(ctx, 'Try again!');
         return true;
       }

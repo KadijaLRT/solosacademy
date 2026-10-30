@@ -92,7 +92,7 @@
     const f = F(); const u = f.unitOf(ctx);
     const seen = {};
     return f.wordsOf(ctx, u).filter((w) => { const k = String(w.en).toLowerCase(); if (seen[k]) return false; seen[k] = 1; return true; })
-      .map((w) => ({ id: w.en, e: w.emoji, en: w.en, sp: w.spidey || '', spEs: w.spideyEs || '', tl: f.tlFor(ctx, w) }));
+      .map((w) => ({ id: w.en, e: SA.pic(w.emoji, w.en), en: w.en, sp: f.H(ctx, w.spidey || ''), spEs: f.H(ctx, w.spideyEs || ''), tl: f.tlFor(ctx, w) }));
   }
   function letterItems() { return SA.letters.map((x) => ({ id: x.l, l: x.l, lo: x.l.toLowerCase(), w: x.w, e: x.e, end: !!x.end })); }
   function numItems(ctx) { const max = rangeMax(ctx); return SA.numbers.filter((x) => x.n <= max).map((x) => ({ id: String(x.n), n: x.n, en: x.en, es: x.es })); }
@@ -341,10 +341,12 @@
   function hub(ctx, g) {
     const st = ctx.state; const c = cfg(ctx); const n = st.rbBands || 0;
     const base = ['letters', 'numbers', 'colors', 'shapes'].filter((k) => c.secs[k]);
-    const bt = { letters: ['🔤', 'Letters'], numbers: ['🔢', 'Numbers'], colors: ['🎨', 'Colors'], shapes: ['🔷', 'Shapes'] };
-    const tiles = base.map((k) => '<button class="gbig" data-act="gsec" data-s="' + k + '"><span>' + bt[k][0] + '</span>' + bt[k][1] + '</button>').join('') +
+    const bt = { letters: [SA.ic('letters'), 'Letters'], numbers: [SA.ic('numbers'), 'Numbers'], colors: [SA.ic('colors'), 'Colors'], shapes: [SA.ic('shapes'), 'Shapes'] };
+    const pathDone = (st.pathDays || []).indexOf(ctx.dkey()) >= 0;
+    const pathTile = '<button class="gbig pathbig" data-act="gpath"><span>' + SA.ic(pathDone ? 'check' : 'plane') + '</span>' + (pathDone ? 'Play again!' : 'Let’s go!') + '</button>';
+    const tiles = pathTile + base.map((k) => '<button class="gbig" data-act="gsec" data-s="' + k + '"><span>' + bt[k][0] + '</span>' + bt[k][1] + '</button>').join('') +
       (c.secs.words ? (SA.topicOrder || SA.units.map((u) => u.id)).map((id) => SA.units.find((u) => u.id === id)).filter(Boolean).map((u) =>
-        '<button class="gbig" style="background:linear-gradient(160deg,' + u.c2 + ',' + u.c1 + ')" data-act="gtopic" data-id="' + u.id + '"><span>' + u.emoji + '</span>' + ctx.esc(u.name) + (u.school ? ' 🏫' : '') + '</button>').join('') : '');
+        '<button class="gbig" style="background:linear-gradient(160deg,' + u.c2 + ',' + u.c1 + ')" data-act="gtopic" data-id="' + u.id + '"><span>' + SA.topicIc(u) + '</span>' + ctx.esc(u.name) + (u.school ? ' 🏫' : '') + '</button>').join('') : '');
     return '<div class="card gtop"><div class="rbcol">' + rainbow(n, true) + '<div class="small muted">' + n + ' of 7 · 🌈 ' + (st.rainbows || 0) + '</div></div>' +
       '<button class="iconbtn" data-act="ghow" aria-label="How to play">❓</button></div>' +
       '<div class="gbtns n4 secs">' + tiles + '</div>';
@@ -597,9 +599,10 @@
   /* ---------- finish screen ---------- */
   function doneView(ctx, g) {
     const st = ctx.state;
-    return '<div class="card hero center"><div class="big-em">🎉</div><b style="font-size:28px">' + (g.full ? 'A whole rainbow!' : 'You did it!') + '</b>' + (previewing(ctx) ? '' : rainbow(st.rbBands || 0) +
+    const pd = g.path ? '<div class="dots" style="justify-content:center;margin:6px 0">' + g.path.steps.map((x, i) => '<i class="' + (i <= g.path.i ? 'on' : '') + '"></i>').join('') + '</div>' : '';
+    return '<div class="card hero center"><div class="big-em">🎉</div>' + pd + '<b style="font-size:28px">' + (g.full ? 'A whole rainbow!' : 'You did it!') + '</b>' + (previewing(ctx) ? '' : rainbow(st.rbBands || 0) +
       '<div class="small muted">' + (g.full ? 'Rainbows made: ' + (st.rainbows || 0) : (st.rbBands || 0) + ' of 7 colors') + '</div>') +
-      '<div class="row" style="justify-content:center;margin-top:10px"><button class="btn alt iconbtn big" data-act="ghub" aria-label="Games">🏠</button><button class="btn sun iconbtn big" data-act="gagain-game" aria-label="Play again">▶</button></div></div>';
+      '<div class="row" style="justify-content:center;margin-top:10px"><button class="btn alt iconbtn big" data-act="ghub" aria-label="Games">🏠</button><button class="btn sun iconbtn big" data-act="' + (g.path ? 'gpathnext' : 'gagain-game') + '" aria-label="' + (g.path ? 'Next' : 'Play again') + '">▶</button></div></div>';
   }
 
   G.view = function (ctx) {
@@ -643,6 +646,16 @@
     if ((g.game === 'pop' || g.game === 'sound' || g.game === 'add') && g.pop) return promptSay(ctx, g);
     if (g.game === 'count' && g.board) return F().say(ctx, countPrompt(ctx, g, g.board), 'en-US', false, true);
     return false;
+  }
+  /* Guided path: a short walk through the day's games, one after another. */
+  function buildPath(ctx) {
+    const c = cfg(ctx); const want = [['letters', 'pop'], ['numbers', 'pop'], ['words', 'drag'], ['colors', 'pop'], ['shapes', 'drag'], ['numbers', 'sing']];
+    const g = GS(ctx); const keep = g.sec; const out = [];
+    want.forEach((w) => { if (c.secs[w[0]]) { g.sec = w[0]; if (gamesFor(ctx, w[0]).indexOf(w[1]) >= 0) out.push({ sec: w[0], game: w[1] }); } });
+    g.sec = keep; return out.slice(0, 5);
+  }
+  function pathStep(ctx, g) {
+    const st = g.path.steps[g.path.i]; g.sec = st.sec; startGame(ctx, g, st.game);
   }
   function finish(ctx, g) {
     g.full = reward(ctx); g.screen = 'done'; sYay(); ctx.render(false);
@@ -688,7 +701,7 @@
 
   G.handle = function (a, d, ctx) {
     const g = GS(ctx); const f = F();
-    if (a === 'ghub' || a === 'gexit' || a === 'gback' || a === 'gsec' || a === 'gtopic') SA.kid.stop();
+    if (a === 'ghub' || a === 'gexit' || a === 'gback' || a === 'gsec' || a === 'gtopic') { SA.kid.stop(); g.path = null; }
     switch (a) {
       case 'gsec': { g.sec = d.s; g.screen = 'sec'; ctx.render(false); const nm = ({ letters: 'Letters', numbers: 'Numbers', colors: 'Colors', shapes: 'Shapes' })[d.s] || (f.unitOf(ctx).name + ' words'); f.say(ctx, nm, 'en-US', false, true); return true; }
       case 'gtoggle': { const c = cfg(ctx); c.secs[d.s] = !c.secs[d.s]; if (!SECS.some((k) => c.secs[k])) c.secs[d.s] = true; ctx.save(); ctx.render(true); return true; }
@@ -702,7 +715,13 @@
       case 'gtopic': { S_fun_unit(ctx, d.id); g.sec = 'words'; g.screen = 'sec'; ctx.render(false); f.say(ctx, f.unitOf(ctx).name, 'en-US', false, true); return true; }
       case 'glgrid': g.screen = 'lgrid'; ctx.render(false); return true;
       case 'ghub': g.screen = 'hub'; g.game = null; g.tok++; ctx.render(false); return true;
-      case 'gstart': startGame(ctx, g, d.g); return true;
+      case 'gstart': g.path = null; startGame(ctx, g, d.g); return true;
+      case 'gpath': { const steps = buildPath(ctx); if (!steps.length) return true; g.path = { steps, i: 0 }; f.say(ctx, 'Let us go!', 'en-US', false, true); pathStep(ctx, g); return true; }
+      case 'gpathnext': {
+        if (!g.path) return true; g.path.i += 1;
+        if (g.path.i >= g.path.steps.length) { ctx.state.pathDays = ctx.state.pathDays || []; if (ctx.state.pathDays.indexOf(ctx.dkey()) < 0) ctx.state.pathDays.push(ctx.dkey()); ctx.save(); g.path = null; g.screen = 'hub'; g.game = null; g.tok++; ctx.render(false); f.say(ctx, 'You did it! All done!', 'en-US', false, true); return true; }
+        pathStep(ctx, g); return true;
+      }
       case 'ghow': sayHow(ctx, g, howKey(g)); return true;
       case 'ghelp': ctx.state.gameHelp = d.v === '1'; ctx.save(); ctx.render(true); return true;
       case 'gback':

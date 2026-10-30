@@ -19,6 +19,7 @@
   const WBY = {}; S.words.forEach((w) => { WBY[w.id] = w; });
   const CATBY = {}; S.categories.forEach((c) => { CATBY[c.id] = c; });
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+  const APP_VERSION = 38;
   const KID_TABS = [['games', '🎈', 'Games'], ['learn', '📚', 'Learn'], ['feel', '💛', 'Feelings']];
   const PARENT_TABS = [['today', '🏠', 'Today'], ['learn', '📚', 'Learn'], ['games', '🎈', 'Games'], ['theme', '🏫', 'School'], ['grow', '🚀', 'Grow'], ['act', '🎭', 'Activities']];
 
@@ -49,7 +50,7 @@
     updateHeader();
   }
 
-  const ui = { wlang: null, wcat: 'all', tweek: null, gtab: 'miles', mband: null, cardList: [], cardIdx: 0, openDetails: {} };
+  const ui = { wlang: null, wcat: 'all', tweek: null, gtab: 'hub', mband: null, cardList: [], cardIdx: 0, openDetails: {} };
 
   /* ---------- derived ---------- */
   function ageYears() {
@@ -132,8 +133,45 @@
   }
   function hasVoice(tag) { return !!findVoice(tag); }
   /* opts is optional: { pitch, rate } gives a character-style sound (rate is a multiplier). */
+  /* Optional natural English voice (api/tts.js). Plain lines only; characters and singing stay on the device voice.
+     Clips are cached on the device, so each line is fetched once. Any problem falls back to the device voice. */
+  let nEl = null; let nUrl = null;
+  const NSILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+  function neuralOk(text, tag, opts) {
+    return !!state.neural && /^en/i.test(tag || '') && !(opts && (opts.pitch || opts.rate)) && navigator.onLine !== false && String(text).length <= 190;
+  }
+  function speakNeural(text, tag, slow, opts) {
+    try {
+      if (!nEl) nEl = new Audio();
+      try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) { /* ignore */ }
+      nEl.pause(); nEl.src = NSILENT; const u = nEl.play(); if (u && u.catch) u.catch(() => {});
+      const my = ++nSeq; const key = 'tts:' + text;
+      const fallback = () => { if (my === nSeq) speak(text, tag, slow, Object.assign({}, opts || {}, { noNeural: true })); };
+      (async () => {
+        let blob = null;
+        try { blob = await recGet(key); } catch (e) { blob = null; }
+        if (!blob) {
+          const r = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+          if (!r.ok) throw new Error('tts');
+          blob = await r.blob();
+          if (!blob || blob.size < 500) throw new Error('empty');
+          try { await recPut(key, blob); } catch (e) { /* ignore */ }
+        }
+        if (my !== nSeq) return;
+        if (nUrl) URL.revokeObjectURL(nUrl);
+        nUrl = URL.createObjectURL(blob); nEl.src = nUrl;
+        nEl.playbackRate = slow ? 0.85 : 1;
+        nEl.onended = () => { if (opts && opts.onend) opts.onend(); };
+        await nEl.play();
+      })().catch(fallback);
+      return true;
+    } catch (e) { return false; }
+  }
+  let nSeq = 0;
   function speak(text, tag, slow, opts) {
     try {
+      nSeq++; try { if (nEl) nEl.pause(); } catch (e) { /* ignore */ }
+      if (!(opts && opts.noNeural) && neuralOk(text, tag, opts) && speakNeural(text, tag, slow, opts)) return true;
       if (!('speechSynthesis' in window)) return false;
       const v = findVoice(tag);
       if (!v && tag.split('-')[0] === 'zu') return false;
@@ -669,16 +707,6 @@
     return '<div class="card"><b>Last 14 days</b><div class="row" style="flex-wrap:wrap;gap:6px;margin-top:8px">' + rows.reverse().join('') + '</div>' + tally + '</div>' +
       '<button class="btn alt small" data-act="go" data-to="feel">Open feelings toolkit</button>';
   }
-  function viewGrow() {
-    let h = '<h2>Grow</h2><div class="chips">' + [['miles', '✅ Milestones'], ['feels', '💛 Feelings'], ['guide', '🌱 Parent guide'], ['log', '📈 Daily log'], ['map', '🗺️ Growth map to 10']].map((t) =>
-      '<button class="chip" aria-pressed="' + (ui.gtab === t[0]) + '" data-act="gtab" data-t="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>';
-    if (ui.gtab === 'miles') return h + growMilestones();
-    if (ui.gtab === 'feels') return h + growFeelings();
-    if (ui.gtab === 'guide') return h + S.parent.viewGuide(ctx);
-    if (ui.gtab === 'log') return h + S.fun.viewLog(ctx);
-    if (ui.gtab === 'map') return h + growMap();
-    return h + growMap();
-  }
   function growMilestones() {
     if (!ui.mband) ui.mband = defaultMilestoneBand();
     const band = S.milestones.find((m) => m.id === ui.mband);
@@ -695,13 +723,52 @@
     return h;
   }
   function growMap() {
-    const cur = growthBand();
-    let h = '<p class="muted">What to build at each stage. Ages 2 to 5 follow the CDC lists. Ages 6 to 10 describe typical elementary goals. Second-language targets are my suggestions, not norms.</p>';
-    S.growth.forEach((g) => {
-      h += '<details class="acc"' + (g.id === cur.id ? ' open' : '') + '><summary>' + esc(g.range) + ' &middot; ' + esc(g.grade) + (g.id === cur.id ? ' <span class="pill green">Now</span>' : '') + '</summary><div class="acc-body"><table class="tbl">' +
-        Object.keys(g.areas).map((a) => '<tr><td style="width:34%"><b>' + esc(a) + '</b></td><td>' + esc(g.areas[a]) + '</td></tr>').join('') + '</table></div></details>';
-    });
+    const cur = growthBand(); const gid = ui.gband || cur.id; const g = S.growth.find((x) => x.id === gid) || cur;
+    let h = '<div class="chips">' + S.growth.map((x) => '<button class="chip" aria-pressed="' + (x.id === g.id) + '" data-act="gband" data-id="' + x.id + '">' + esc(x.range.replace('Ages ', '').replace('Age ', '')) + (x.id === cur.id ? ' ⭐' : '') + '</button>').join('') + '</div>';
+    h += '<div class="card hero"><b style="font-size:20px">' + esc(g.range) + '</b> <span class="pill">' + esc(g.grade) + '</span>' + (g.id === cur.id ? ' <span class="pill green">Now</span>' : '') + '</div>';
+    const AIC = { 'English and talking': '🗣️', 'Reading and writing': '📖', 'Math': '🔢', 'Science and thinking': '🔬', 'Second language': '🌍', 'Feelings and friends': '💛', 'Body and movement': '🤸', 'Art and music': '🎨' };
+    h += '<div class="grid g2">' + Object.keys(g.areas).map((a) => '<details class="card area"><summary><span class="area-em">' + (AIC[a] || '🌱') + '</span><b>' + esc(a) + '</b></summary><p class="small">' + esc(g.areas[a]) + '</p></details>').join('') + '</div>';
     return h;
+  }
+  function growLevels() {
+    const lv = S.stage.level(state); const names = { letters: ['🔤', 'Letters'], numbers: ['🔢', 'Numbers'], colors: ['🎨', 'Colors'], shapes: ['🔷', 'Shapes'], words: ['📖', 'Topic words'] };
+    const rows = Object.keys(names).map((k) => { const l = Math.min(4, lv + ((state.adapt || {})[k] || 0)); return '<div class="lvrow"><span class="lvem">' + names[k][0] + '</span><div style="flex:1"><div class="small"><b>' + names[k][1] + '</b> · Level ' + l + '</div><div class="progress"><i style="width:' + Math.round((l + 1) / 5 * 100) + '%"></i></div></div></div>'; }).join('');
+    return stageCard() + '<div class="card">' + rows + '</div>' +
+      ((state.levelLog || []).length ? '<div class="card"><b>Level-ups</b><div class="stats">' + state.levelLog.slice(0, 6).map((x) => '<span>' + esc(x.date.slice(5)) + ' ' + (names[x.sec] || ['', x.sec])[0] + ' L' + x.level + '</span>').join('') + '</div></div>' : '');
+  }
+  function gTile(id, em, label, status) {
+    return '<button class="gtile" data-act="gtab" data-t="' + id + '"><span class="gt-em">' + em + '</span><b>' + label + '</b><span class="gt-st">' + status + '</span></button>';
+  }
+  function growGuide() {
+    const secs = S.parent.sections(ctx);
+    if (ui.gsec) {
+      const x = secs.find((y) => y.id === ui.gsec);
+      if (x) return '<div class="gback"><button class="btn alt small" data-act="grsec" data-id="">◀ Guide</button><b>' + x.e + ' ' + esc(x.t) + '</b></div><div class="card">' + x.body + '</div>';
+    }
+    return '<div class="grid g2">' + secs.map((x) => '<button class="gtile" data-act="grsec" data-id="' + x.id + '"><span class="gt-em">' + x.e + '</span><b>' + esc(x.t) + '</b><span class="gt-st">' + esc(x.n) + '</span></button>').join('') + '</div>' + S.parent.safety(ctx);
+  }
+  const GTITLES = { miles: ['✅', 'Milestones'], feels: ['💛', 'Feelings'], log: ['📈', 'Daily log'], map: ['🗺️', 'Roadmap to 10'], guide: ['🌱', 'Parent guide'], levels: ['🚀', 'Her levels'] };
+  function viewGrow() {
+    const t = GTITLES[ui.gtab] ? ui.gtab : 'hub';
+    if (t === 'hub') {
+      const mb = S.milestones.find((m) => m.id === (ui.mband || defaultMilestoneBand())); const md = mb.items.filter((i) => state.milestones[i.id]).length;
+      const f = S.feelings.find((x) => x.id === (state.feelLog || {})[dkey()]);
+      const tip = S.parent.todayMove(themeInfo().diff).m.t; const lv = S.stage.level(state);
+      return '<h2>Grow</h2><div class="grid g2">' +
+        gTile('levels', S.ic('grow'), 'Her levels', 'Level ' + lv + (S.stage.ageText(state) ? ' · ' + esc(S.stage.ageText(state)) : '')) +
+        gTile('miles', S.ic('check'), 'Milestones', md + ' of ' + mb.items.length + ' · ' + esc(mb.label.toLowerCase())) +
+        gTile('feels', S.ic('heart'), 'Feelings', f ? 'Today: ' + esc(f.name) : 'None today') +
+        gTile('log', S.ic('chart'), 'Daily log', (state.log || []).length + ' entries') +
+        gTile('map', S.ic('map'), 'Roadmap to 10', 'Now: ' + esc(growthBand().range)) +
+        gTile('guide', S.ic('sprout'), 'Parent guide', esc(tip)) + '</div>';
+    }
+    const head = '<div class="gback"><button class="btn alt small" data-act="gtab" data-t="hub">◀ Grow</button><b>' + GTITLES[t][0] + ' ' + GTITLES[t][1] + '</b></div>';
+    if (t === 'miles') return head + growMilestones();
+    if (t === 'feels') return head + growFeelings();
+    if (t === 'log') return head + S.fun.viewLog(ctx);
+    if (t === 'map') return head + growMap();
+    if (t === 'levels') return head + growLevels();
+    return (ui.gsec ? '' : head) + growGuide();
   }
   /* ---------- ACTIVITIES ---------- */
   const STATUS = { active: ['Active now', 'green'], next: ['Next up', 'sun'], planned: ['Planned', ''], paused: ['Paused', 'coral'], done: ['Finished', ''] };
@@ -768,7 +835,9 @@
       '<label class="f">Focus language</label>' + sel('focusLang', S.langs.map((l) => [l.id, l.flag + ' ' + l.name])) +
       '<p class="small muted">Tip: switch the focus language each month, or keep one going for longer. Real conversation with native speakers helps most.</p>' +
       '<label class="f">Voice speed</label>' + sel('rate', [[0.6, 'Slow'], [0.8, 'Gentle (default)'], [1, 'Normal']]) +
+      '<label class="f">Natural English voice (needs internet and the Groq key)</label>' + sel('neural', [['', 'Off: device voice (default)'], ['1', 'On: natural voice, falls back if it fails']]) +
       '<p><button class="btn alt small" data-act="test-voice">🔊 Test voice</button></p></div>';
+    hs += '<div class="card"><b>📖 Story character</b><p class="small muted">Who the word lines and story use. Spidey is the default.</p><div class="chips">' + S.fun.heroes.map((h) => '<button class="chip" aria-pressed="' + ((state.hero || 'spidey') === h[0]) + '" data-act="hero-set" data-id="' + h[0] + '">' + h[1] + ' ' + esc(h[2] || state.nick || 'Solana') + '</button>').join('') + '</div></div>';
     hs += '<div class="card"><b>🌳 Class unit</b><label class="f" for="s-theme">' + esc(planTheme().name) + ' start date</label><input type="date" id="s-theme" data-set="themeStart" value="' + esc(startFor(planTheme().id)) + '">' +
       '<p class="small muted">Change the unit itself in the School tab.</p></div>';
     hs += '<div class="card"><b>🎈 Games and levels</b><p class="small muted">What she plays, her start level, and practice live in Game settings.</p><p style="margin-bottom:0"><button class="btn" data-act="go" data-to="games">Open Game settings</button></p></div>';
@@ -788,6 +857,7 @@
     hm += '<div class="card"><b>Backup</b><p class="small muted">Saves progress, settings, and activities as a file. Recordings are stored in this browser and are not in the backup.</p>' +
       '<div class="row"><button class="btn alt" data-act="backup">Download backup</button><label class="btn alt" style="display:inline-flex;align-items:center;cursor:pointer">Restore<input id="restoreFile" type="file" accept="application/json" hidden></label></div>' +
       '<p><button class="btn coral small" data-act="reset">Erase everything on this device</button></p></div>';
+    hm += '<div class="card"><b>App version ' + APP_VERSION + '</b><p class="small muted">If this number is lower than the newest release, close the app fully and open it again twice.</p></div>';
     hm += '<div class="card note"><b>Privacy</b><p class="small">No accounts, ads, or analytics. Everything is saved on this device. The only thing that uses the internet is the optional Groq story button on the Play tab, which sends just a word and the unit name. Clearing Safari website data will erase it, so download a backup now and then.</p></div>';
     hm += '<div class="card"><b>Install on iPad or iPhone</b><p class="small">' + (standalone ? 'You are running it as an app. 🎉' : 'Open this page in Safari, tap the Share button, then "Add to Home Screen".') + '</p></div>';
     const tab = ui.sset === 'me' ? 'me' : 'solana';
@@ -831,7 +901,8 @@
   }
   function renderTabs() {
     const tabs = isChild() ? KID_TABS : PARENT_TABS; const nav = $('#tabs');
-    nav.innerHTML = tabs.map((t) => '<button data-act="go" data-to="' + t[0] + '"><span>' + t[1] + '</span>' + t[2] + '</button>').join('');
+    const TI = { today: 'home', learn: 'learn', games: 'games', theme: 'school', grow: 'grow', act: 'activities', feel: 'heart' };
+    nav.innerHTML = tabs.map((t) => '<button data-act="go" data-to="' + t[0] + '"><span>' + (S.ic(TI[t[0]]) || t[1]) + '</span>' + t[2] + '</button>').join('');
   }
   /* Less reading for the grown-up view: long helper text hides behind a small ⓘ button. */
   function liteify() {
@@ -867,6 +938,7 @@
     const el = e.target.closest('[data-act]'); if (!el) return;
     const a = el.dataset.act; const d = el.dataset;
     switch (a) {
+      case 'hero-set': state.hero = d.id; save(); render(false); toast('Story character: ' + S.fun.hero(ctx).name); break;
       case 'learn-mode': ui.learnMode = d.m; render(false); break;
       case 'go': closeModal(); if (isChild()) { ui.kid = {}; if (S.kid) S.kid.stop(); } go(d.to); break;
       case 'sset': ui.sset = d.t; render(false); break;
@@ -922,7 +994,9 @@
         break;
       }
       case 'tweek': ui.tweek = +d.n; render(true); break;
-      case 'gtab': ui.gtab = d.t; render(false); break;
+      case 'gtab': ui.gtab = d.t; ui.gsec = null; render(true); break;
+      case 'grsec': ui.gsec = d.id || null; render(true); break;
+      case 'gband': ui.gband = d.id; render(false); break;
       case 'mband': ui.mband = d.id; render(true); break;
       case 'act-open': openActivity(d.id || null); break;
       case 'act-save': {
@@ -938,7 +1012,7 @@
         if (state.activities.some((y) => y.name === x.name)) { toast('Already on the list'); break; }
         state.activities.push({ id: 'a-' + Date.now(), name: x.name, type: x.type, status: 'planned', when: '', note: '', lang: '' }); save(); render(true); toast('Added to the list'); break;
       }
-      case 'test-voice': { const L = LBY[state.focusLang]; const w = WBY.hello; if (!speak(w[L.id][0], L.tts)) toast('No ' + L.name + ' voice on this device'); else toast('Playing ' + L.name); break; }
+      case 'test-voice': { if (state.neural) { speak('Hello! Let us learn a new word today.', 'en-US'); toast('Playing natural English'); break; } const L = LBY[state.focusLang]; const w = WBY.hello; if (!speak(w[L.id][0], L.tts)) toast('No ' + L.name + ' voice on this device'); else toast('Playing ' + L.name); break; }
       case 'backup': {
         const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob); const link = document.createElement('a');
@@ -1025,7 +1099,13 @@
   })();
   render(false);
   if (state.look !== 'classic') { $('#splash').hidden = false; } else if (!state.onboarded && !isChild()) openOnboarding();
+  /* Stop pinch and double-tap zoom (iOS ignores the viewport setting). */
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach((ev) => document.addEventListener(ev, (e) => e.preventDefault()));
+  let lastTouch = 0;
+  document.addEventListener('touchend', (e) => { const n = Date.now(); if (n - lastTouch < 350 && e.target.closest && !e.target.closest('input, textarea, select')) e.preventDefault(); lastTouch = n; }, { passive: false });
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
-    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+    const had = !!navigator.serviceWorker.controller; let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (had && !reloaded) { reloaded = true; location.reload(); } });
+    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').then((r) => { try { r.update(); } catch (e) { /* ignore */ } }).catch(() => {}); });
   }
 })();
