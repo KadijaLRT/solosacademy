@@ -61,6 +61,6 @@
     const body = I[name]; if (!body) return '';
     return '<svg class="ic ' + (cls || '') + '" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><g stroke="' + INK + '" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" fill="none">' + body + '</g></svg>';
   };
-  SA.faceIc = (id) => SA.ic(FACE[id] || id);
+  SA.faceIc = (id) => { const k = FACE[id] || id; return (SA.picSvg && SA.wordIcons && SA.wordIcons['face-' + k] && SA.picSvg('face-' + k)) || SA.ic(k); };
   SA.topicIc = (u) => (I[u.id] ? SA.ic(u.id) : (u.emoji || ''));
 })();

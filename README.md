@@ -152,3 +152,8 @@ Calm cream and sky backgrounds. Bright, saturated colors mean "tap me"; pastels 
 
 ## Word pictures
 Pictures are original vector art drawn with a 3D look (soft gradients, lighting, ground shadow, natural colors, no cartoon faces). They are not photographs. Words with no drawing fall back to emoji.
+
+## v48
+- Redrew foot, arm, hair, fall, coat, galaxy, lion, zebra, shark, fish, octopus (8 arms), dolphin, train, kitchen, bathroom, living room, wave, hammer, mail carrier.
+- Feelings faces redrawn. Learn hub is now Word cards, Story, Words. Story is a short paragraph.
+- How Things Move pictures animate (games.css, wic-<word>); "fall" there is the action (falling).

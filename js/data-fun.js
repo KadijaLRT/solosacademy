@@ -594,6 +594,7 @@
    },
    {
     "en": "fall",
+    "pic": "falling",
     "es": "caer",
     "emoji": "🍂",
     "week": "Slide and Fall",

@@ -69,7 +69,7 @@
 
   /* ---------- PLAY ---------- */
   K.v_learn_hub = function (ctx) {
-    return grid(tile('kopen', 'data-t="learn" data-s="today"', SA.ic('plane'), 'Today') + tile('kopen', 'data-t="learn" data-s="topics"', SA.ic('cards'), 'Word cards') + tile('kopen', 'data-t="learn" data-s="songs"', SA.ic('music'), 'Sing') + tile('kopen', 'data-t="learn" data-s="story"', SA.ic('story'), 'Story') + tile('kopen', 'data-t="learn" data-s="langs"', SA.ic('words'), 'Words') + tile('kopen', 'data-t="learn" data-s="mine"', SA.ic('activities'), 'My day'));
+    return grid(tile('kopen', 'data-t="learn" data-s="topics"', SA.ic('cards'), 'Word cards') + tile('kopen', 'data-t="learn" data-s="story"', SA.ic('story'), 'Story') + tile('kopen', 'data-t="learn" data-s="langs"', SA.ic('words'), 'Words'));
   };
   /* Today: the parent's daily plan as picture tiles. Same ticks as the parent Today tab. */
   const STOP = { feel: ['heart', 'Feelings', 'How do you feel?'], english: ['words', 'Talk', 'Let us talk!'], lang: ['cards', 'Words', 'Learn new words!'], move: ['activities', 'Move', ''], read: ['story', 'Story', 'Story time!'], math: ['numbers', 'Numbers', 'Let us count!'], art: ['colors', 'Make', ''] };
@@ -94,7 +94,7 @@
   K.v_learn_topics = function (ctx) { return bar(true) + grid(topicTiles(ctx)); };
   K.v_learn_cards = function (ctx, t) {
     const u = F().unitOf(ctx); const list = F().wordsOf(ctx, u); t.i = ((t.i % list.length) + list.length) % list.length; const w = list[t.i]; const tl = F().tlFor(ctx, w);
-    return bar(true) + '<div class="card center gcard"><div class="big-em">' + SA.pic(w.emoji, w.en) + '</div><div class="big-word">' + ctx.esc(w.en) + '</div>' +
+    return bar(true) + '<div class="card center gcard"><div class="big-em">' + SA.pic(w.emoji, w.pic || w.en) + '</div><div class="big-word">' + ctx.esc(w.en) + '</div>' +
       '<div class="row" style="justify-content:center;margin-top:8px"><button class="btn iconbtn big" data-act="ksay" data-k="en" aria-label="English">🇺🇸</button><button class="btn coral iconbtn big" data-act="ksay" data-k="tl" aria-label="' + ctx.esc(tl.name) + '">' + tl.flag + '</button></div>' +
       '<div class="row between" style="margin-top:14px"><button class="btn alt iconbtn big" data-act="knav" data-d="-1" aria-label="Previous">◀</button><button class="btn sun iconbtn big" data-act="knav" data-d="1" aria-label="Next">▶</button></div></div>';
   };
@@ -107,9 +107,20 @@
       '<div class="row" style="justify-content:center;margin-top:8px"><button class="btn iconbtn big" data-act="ksay" data-k="sing" aria-label="Sing">🎵</button><button class="btn alt iconbtn big" data-act="ksay" data-k="slow" aria-label="Slowly">🐢</button></div>' +
       '<div class="row between" style="margin-top:14px"><button class="btn alt iconbtn big" data-act="kstep" data-d="-1"' + (t.step === 0 ? ' disabled' : '') + ' aria-label="Back">◀</button><button class="btn sun iconbtn big" data-act="kstep" data-d="1"' + (t.step === dr.steps.length - 1 ? ' disabled' : '') + ' aria-label="Next">▶</button></div></div>';
   };
+  const NOT_NOUN = { colors: 1, numbers: 1, greet: 1, feel: 1, days: 1, months: 1 };
+  function storyText(ctx, w, u, i) {
+    const H = F().hero(ctx).name; const x = w.en;
+    if (NOT_NOUN[u.id]) return 'Today ' + H + ' learned a brand new word. The word was "' + x + '". ' + H + ' said it softly, "' + x + '." Then ' + H + ' said it in a big, loud voice, "' + x + '!" Everyone clapped and cheered. ' + H + ' said "' + x + '" again and again until it stuck in a happy head. What a smart day!';
+    const T = [
+      H + ' woke up on a bright, sunny morning and went outside to explore. Suddenly, ' + H + ' spotted the ' + x + '! ' + H + ' walked over very slowly and looked at it up close. "Wow, the ' + x + '!" ' + H + ' whispered. Friends came running to see, and they all cheered. It was the best day ever.',
+      'One day, ' + H + ' was playing when a soft sound came from behind. ' + H + ' turned around, and there was the ' + x + '! At first it was a little surprising. Then ' + H + ' smiled a great big smile and waved hello to the ' + x + '. It felt like the ' + x + ' waved back. ' + H + ' ran home to tell everyone.',
+      H + ' went on a little adventure with the family. They walked and walked until they found the ' + x + '. "I see the ' + x + '!" shouted ' + H + ', and everyone laughed and clapped. Then they sat down and shared a snack. When the sun went down, ' + H + ' said goodnight to the ' + x + '.'
+    ];
+    return T[((i % 3) + 3) % 3];
+  }
   K.v_learn_story = function (ctx, t) {
     const u = F().unitOf(ctx); const list = F().wordsOf(ctx, u); const w = list[((t.si % list.length) + list.length) % list.length];
-    return bar(true) + '<div class="card center gcard"><div class="big-em">' + SA.pic(w.emoji, w.en) + '</div><div class="big-word" style="font-size:26px">' + ctx.esc(F().hero(ctx).name) + ' sees the ' + ctx.esc(w.en) + '.</div>' +
+    return bar(true) + '<div class="card center gcard"><div class="big-em">' + SA.pic(w.emoji, w.pic || w.en) + '</div><div class="big-word" style="font-size:19px;line-height:1.45;text-align:left">' + ctx.esc(storyText(ctx, w, u, t.si)) + '</div>' +
       '<div class="row" style="justify-content:center;margin-top:8px"><button class="btn iconbtn big" data-act="ksay" data-k="story" aria-label="Hear it">🔊</button><button class="btn sun iconbtn big" data-act="kstory" aria-label="Next">▶</button></div></div>';
   };
 
@@ -161,7 +172,7 @@
     const u = F().unitOf(ctx);
     if (scr === 'cards') { const list = F().wordsOf(ctx, u); const w = list[((t.i % list.length) + list.length) % list.length]; if (hasMom(ctx, w, 'en')) { ctx.rec.play(momKey(ctx, w, 'en')); return true; } return say(ctx, w.en, 'en-US', false); }
     if (scr === 'stop') { const x = ctx.plan.stops().find((s) => s.id === t.stop); return say(ctx, (x && x.line) || 'Let us go!'); }
-    if (scr === 'story') { const list = F().wordsOf(ctx, u); const w = list[((t.si % list.length) + list.length) % list.length]; return say(ctx, F().hero(ctx).name + ' sees the ' + w.en + '.'); }
+    if (scr === 'story') { const list = F().wordsOf(ctx, u); const w = list[((t.si % list.length) + list.length) % list.length]; return say(ctx, storyText(ctx, w, u, t.si)); }
     if (scr === 'song') return K.sing(ctx, SA.songDrills[t.drill].steps[t.step].say, 'en-US');
     if (scr === 'quiz') { const z = quizList(ctx, t); return say(ctx, z.qs[t.fi % z.qs.length].q); }
     const label = { 'learn:hub': 'Pick one', 'learn:topics': 'Pick a topic', 'learn:songs': 'Pick a song', 'learn:langs': 'Pick a language', 'learn:today': 'Pick a stop', 'learn:mine': myActs(ctx).length ? 'Tap one' : 'Nothing yet', 'learn:cats': 'Pick one', 'learn:list': 'Tap a picture', 'feel:hub': 'Pick one', 'feel:movies': 'Pick a show', 'feel:faces': 'How do you feel?', 'feel:breath': 'Let us fly and breathe' }[tab + ':' + scr];

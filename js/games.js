@@ -92,7 +92,7 @@
     const f = F(); const u = f.unitOf(ctx);
     const seen = {};
     return f.wordsOf(ctx, u).filter((w) => { const k = String(w.en).toLowerCase(); if (seen[k]) return false; seen[k] = 1; return true; })
-      .map((w) => ({ id: w.en, e: SA.pic(w.emoji, w.en), en: w.en, sp: f.H(ctx, w.spidey || ''), spEs: f.H(ctx, w.spideyEs || ''), tl: f.tlFor(ctx, w) }));
+      .map((w) => ({ id: w.en, e: SA.pic(w.emoji, w.pic || w.en), en: w.en, sp: f.H(ctx, w.spidey || ''), spEs: f.H(ctx, w.spideyEs || ''), tl: f.tlFor(ctx, w) }));
   }
   function letterItems() { return SA.letters.map((x) => ({ id: x.l, l: x.l, lo: x.l.toLowerCase(), w: x.w, e: x.e, end: !!x.end })); }
   function numItems(ctx) { const max = rangeMax(ctx); return SA.numbers.filter((x) => x.n <= max).map((x) => ({ id: String(x.n), n: x.n, en: x.en, es: x.es })); }
