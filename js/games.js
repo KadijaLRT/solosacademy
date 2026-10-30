@@ -92,7 +92,7 @@
     const f = F(); const u = f.unitOf(ctx);
     const seen = {};
     return f.wordsOf(ctx, u).filter((w) => { const k = String(w.en).toLowerCase(); if (seen[k]) return false; seen[k] = 1; return true; })
-      .map((w) => ({ id: w.en, e: SA.pic(w.emoji, w.pic || w.en), en: w.en, sp: f.H(ctx, w.spidey || ''), spEs: f.H(ctx, w.spideyEs || ''), tl: f.tlFor(ctx, w) }));
+      .map((w) => ({ id: w.en, u: w._u || u.id, e: SA.pic(w.emoji, w.pic || w.en), en: w.en, sp: f.H(ctx, w.spidey || ''), spEs: f.H(ctx, w.spideyEs || ''), tl: f.tlFor(ctx, w) }));
   }
   function letterItems() { return SA.letters.map((x) => ({ id: x.l, l: x.l, lo: x.l.toLowerCase(), w: x.w, e: x.e, end: !!x.end })); }
   function numItems(ctx) { const max = rangeMax(ctx); return SA.numbers.filter((x) => x.n <= max).map((x) => ({ id: String(x.n), n: x.n, en: x.en, es: x.es })); }
@@ -201,19 +201,44 @@
     ctx.save(); return full;
   }
   /* Right answers are counted per letter, number, color, shape, and unit word. Three right answers = mastered. */
-  function winKey(ctx, sec, id) { return sec === 'words' ? 'words:' + F().pickIds(ctx).join('+') + ':' + id : sec + ':' + id; }
+  function winKey(ctx, sec, id) {
+    if (sec !== 'words') return sec + ':' + id;
+    const it = wordItems(ctx).find((x) => x.id === id);
+    return 'words:' + ((it && it.u) || F().unitOf(ctx).id) + ':' + id;
+  }
+  /* Mastered = 3 clean right answers on at least 2 different days, with no disqualified (guessed) question since. Older saves without day records keep their progress. */
+  SA.masteryOk = function (st, k, n) {
+    if (!(n >= 3)) return false;
+    if (st.gameHold && st.gameHold[k]) return false;
+    const d = st.gameDays && st.gameDays[k];
+    return d ? d.length >= 2 : true;
+  };
+  function keyOf(ctx, sec, id) { return sec === 'letters' ? 'letters:' + id : winKey(ctx, sec, id); }
   function winsOf(ctx, sec, id) {
     const st = ctx.state;
     return sec === 'letters' ? ((st.letterWins || {})[id] || 0) : ((st.gameWins || {})[winKey(ctx, sec, id)] || 0);
   }
+  function isM(ctx, sec, id) { return SA.masteryOk(ctx.state, keyOf(ctx, sec, id), winsOf(ctx, sec, id)); }
+  /* A wrong try on a question. Two or more wrong tries before the right one means the right answer does not count (she may be tapping everything). */
+  function miss(ctx, sec, id) {
+    const g = ctx.ui.games; if (!g || previewing(ctx)) return;
+    g.miss = g.miss || {}; const k = keyOf(ctx, sec, id); g.miss[k] = (g.miss[k] || 0) + 1;
+  }
   function win(ctx, sec, id) {
     if (previewing(ctx)) return;
-    const st = ctx.state; const was = winsOf(ctx, sec, id);
+    const st = ctx.state; const was = winsOf(ctx, sec, id); const k = keyOf(ctx, sec, id); const gm = ctx.ui.games || {};
+    const m = (gm.miss && gm.miss[k]) || 0; if (gm.miss) delete gm.miss[k];
+    if (m >= 2) { st.gameHold = st.gameHold || {}; st.gameHold[k] = ctx.dkey(); ctx.save(); return; }
+    const wasM = SA.masteryOk(st, k, was);
+    st.gameDays = st.gameDays || {}; if (!st.gameDays[k]) st.gameDays[k] = was > 0 ? ['legacy'] : [];
+    if (st.gameDays[k].indexOf(ctx.dkey()) < 0) st.gameDays[k].push(ctx.dkey());
+    if (st.gameHold) delete st.gameHold[k];
     if (sec === 'letters') { st.letterWins = st.letterWins || {}; st.letterWins[id] = was + 1; }
     else { st.gameWins = st.gameWins || {}; st.gameWins[winKey(ctx, sec, id)] = was + 1; }
     ctx.save();
-    if (was + 1 === 3) ctx.toast(sec === 'letters' ? '🌈 You know the letter ' + id + '!' : '🌈 You know ' + id + '!');
-    if (was + 1 === 3) checkLevelUp(ctx, sec);
+    const nowM = SA.masteryOk(st, k, was + 1);
+    if (!wasM && nowM) ctx.toast(sec === 'letters' ? '🌈 You know the letter ' + id + '!' : '🌈 You know ' + id + '!');
+    if (!wasM && nowM) checkLevelUp(ctx, sec);
   }
   /* She moves up in a section when she has mastered most of what that level asks. */
   const LETTERS_TO_LEVEL = [5, 10, 16, 22];
@@ -224,17 +249,17 @@
   }
   function checkLevelUp(ctx, sec) {
     const st = ctx.state; if (LV(ctx, sec) >= 4) return;
-    const r = secNeeded(ctx, sec); const got = r.items.filter((x) => winsOf(ctx, sec, x.id) >= 3).length;
+    const r = secNeeded(ctx, sec); const got = r.items.filter((x) => isM(ctx, sec, x.id)).length;
     if (got < r.need) return;
     st.adapt = st.adapt || {}; st.adapt[sec] = (st.adapt[sec] || 0) + 1;
     st.levelLog = st.levelLog || []; st.levelLog.unshift({ date: ctx.dkey(), sec, level: LV(ctx, sec) }); st.levelLog = st.levelLog.slice(0, 20);
     ctx.save(); ctx.toast('⬆️ New level!');
     setTimeout(() => F().say(ctx, 'You are growing! New games for you!', 'en-US', false, true), 1800);
   }
-  /* Practice mode: aim at what she has not mastered yet (fewer than 3 right answers). */
+  /* Practice mode: aim at what she has not mastered yet (not yet mastered). */
   function needyOf(ctx, g, items) {
     if (!g.practice) return items;
-    const n = items.filter((x) => winsOf(ctx, g.sec, x.id) < 3);
+    const n = items.filter((x) => !isM(ctx, g.sec, x.id));
     return n.length ? n : items;
   }
   function pickNeedy(ctx, g, all, k) {
@@ -292,14 +317,14 @@
       ['Shapes', 'shapes', shapeItems(ctx).map((x) => ({ id: x.id, label: x.en }))],
       [u.name + ' words', 'words', wordItems(ctx).map((x) => ({ id: x.id, label: x.en }))]
     ];
-    let h = '<div class="card"><b>Her progress</b><p class="small muted">Counted from the games. A piece is mastered after 3 right answers. Green = mastered, yellow = started, gray = not yet. Turn on Practice above to aim her games at the yellow and gray ones.</p>';
+    let h = '<div class="card"><b>Her progress</b><p class="small muted">Counted from the games. A piece is mastered after 3 right answers on at least 2 different days. A question where she tapped wrong answers twice or more before the right one does not count, and pauses that piece until her next clean answer. 🗣️ means you marked that she says it. Green = mastered, yellow = started, gray = not yet. Turn on Practice above to aim her games at the yellow and gray ones.</p>';
     defs.forEach((d) => {
-      const rows = d[2].map((x) => ({ x, n: winsOf(ctx, d[1], x.id) })); const done = rows.filter((r) => r.n >= 3).length;
+      const rows = d[2].map((x) => ({ x, n: winsOf(ctx, d[1], x.id), m: isM(ctx, d[1], x.id), sp: !!(ctx.state.spoken || {})[keyOf(ctx, d[1], x.id)] })); const done = rows.filter((r) => r.m).length;
       h += '<div style="margin:10px 0 2px"><b>' + ctx.esc(d[0]) + '</b> <span class="small muted">' + done + ' of ' + rows.length + ' mastered</span> ' + (done < rows.length ? '' : '<span class="pill">All mastered 🌈</span>') + '</div><div class="pgrid">' +
-        rows.map((r) => '<span class="pbadge ' + (r.n >= 3 ? 'm' : r.n > 0 ? 's' : '') + '" title="' + r.n + ' right">' + ctx.esc(r.x.label) + '</span>').join('') + '</div>';
+        rows.map((r) => '<span class="pbadge ' + (r.m ? 'm' : r.n > 0 ? 's' : '') + '" title="' + r.n + ' right">' + ctx.esc(r.x.label) + (r.sp ? ' 🗣️' : '') + '</span>').join('') + '</div>';
     });
     const nextUp = [];
-    defs.forEach((d) => d[2].forEach((x) => { const n = winsOf(ctx, d[1], x.id); if (n > 0 && n < 3) nextUp.push(x.label); }));
+    defs.forEach((d) => d[2].forEach((x) => { const n = winsOf(ctx, d[1], x.id); if (n > 0 && !isM(ctx, d[1], x.id)) nextUp.push(x.label); }));
     if (nextUp.length) h += '<p class="small"><b>Started, keep practicing:</b> ' + ctx.esc(nextUp.slice(0, 12).join(', ')) + '</p>';
     return h + '</div>';
   }
@@ -516,7 +541,7 @@
       const max = rangeMax(ctx);
       const last = g.board && g.board.n ? g.board.n : 0;
       const cand = SA.numbers.filter((x) => x.n <= max && x.n !== last);
-      const needy = g.practice ? cand.filter((x) => winsOf(ctx, 'numbers', String(x.n)) < 3) : cand;
+      const needy = g.practice ? cand.filter((x) => !isM(ctx, 'numbers', String(x.n))) : cand;
       const num = pick(needy.length ? needy : cand, 1)[0] || SA.numbers[2];
       const thing = pick(SA.countThings, 1)[0];
       const total = Math.min(num.n + 2, 22);
@@ -635,8 +660,8 @@
     sync(ctx, g);
     if (g.sec === 'words' && wordItems(ctx).length < 4) { ctx.toast('This unit needs at least 4 words.'); return; }
     if (gamesFor(ctx, g.sec).indexOf(which) < 0) return;
-    if (g.practice && (which === 'pop' || which === 'drag' || which === 'count' || which === 'sound')) { const all = itemsFor(ctx, g); if (all.length && all.every((x) => winsOf(ctx, g.sec, x.id) >= 3)) ctx.toast('Everything here is mastered! Playing with everything.'); }
-    g.game = which; g.screen = 'play'; g.full = false;
+    if (g.practice && (which === 'pop' || which === 'drag' || which === 'count' || which === 'sound')) { const all = itemsFor(ctx, g); if (all.length && all.every((x) => isM(ctx, g.sec, x.id))) ctx.toast('Everything here is mastered! Playing with everything.'); }
+    g.game = which; g.screen = 'play'; g.full = false; g.miss = {};
     if (which === 'pop' || which === 'sound' || which === 'add') { g.pop = null; newPop(ctx, g); }
     else if (which === 'sing') { g.sing = null; newSing(ctx, g); g.tok++; }
     else { g.board = null; newBoard(ctx, g, which); }
@@ -687,6 +712,7 @@
     const tile = b.tiles.find((t) => t.key === tileEl.dataset.key); const slot = b.slots.find((s) => s.key === slotEl.dataset.key);
     if (!tile || !slot || b.filled[slot.key]) return false;
     if (tile.match !== slot.match) {
+      if (b.kind === 'drag') miss(ctx, g.sec, tile.match);
       sNo(); slotEl.classList.add('wobble'); setTimeout(() => slotEl.classList.remove('wobble'), 500);
       if (b.kind === 'build') F().say(ctx, 'That is the letter ' + tile.match.toUpperCase() + '. Try again!', 'en-US', false, true);
       else sayWrong(ctx, g, tile.it || { l: tile.match });
@@ -757,7 +783,7 @@
         const p = g.pop; if (!p || g.lock) return true;
         const el = document.querySelector('.balloon[data-id="' + (window.CSS && CSS.escape ? CSS.escape(d.id) : d.id) + '"]');
         const it = p.opts.find((o) => o.id === d.id);
-        if (d.id !== p.target.id) { sNo(); if (el) { el.classList.add('wobble'); setTimeout(() => el.classList.remove('wobble'), 500); } sayWrong(ctx, g, it); return true; }
+        if (d.id !== p.target.id) { miss(ctx, g.sec, p.target.id); sNo(); if (el) { el.classList.add('wobble'); setTimeout(() => el.classList.remove('wobble'), 500); } sayWrong(ctx, g, it); return true; }
         g.lock = true; sPop(); if (el) el.classList.add('popped');
         win(ctx, g.sec, it.id);
         setTimeout(() => sayRight(ctx, g, it), 150);
@@ -777,7 +803,7 @@
 
   /* ---------- drag with pointer events (works with touch and mouse) ---------- */
   G.api = { get reward() { return reward; }, get sYay() { return sYay; }, get sNo() { return sNo; }, get praise() { return praise; }, get previewing() { return previewing; }, get rainbow() { return rainbow; }, get beep() { return beep; } };
-  G.mount = function (ctx) {
+  G.mount = function (ctx) { G._ctx = ctx;
     if (SA.skills && SA.skills.mount) SA.skills.mount(ctx);
     const view = document.getElementById('view'); let drag = null;
     function snapBack(el) { el.style.transition = 'transform .2s'; el.style.transform = ''; setTimeout(() => { el.style.transition = ''; }, 220); }

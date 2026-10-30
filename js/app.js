@@ -19,7 +19,7 @@
   const WBY = {}; S.words.forEach((w) => { WBY[w.id] = w; });
   const CATBY = {}; S.categories.forEach((c) => { CATBY[c.id] = c; });
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-  const APP_VERSION = 59;
+  const APP_VERSION = 61;
   const KID_TABS = [['games', '🎈', 'Games'], ['learn', '📚', 'Learn'], ['feel', '💛', 'Feelings']];
   const PARENT_TABS = [['today', '🏠', 'Today'], ['theme', '🏫', 'School'], ['grow', '🚀', 'Progress'], ['act', '🎭', 'Activities']];
 
@@ -110,7 +110,7 @@
   /* Words Solana mastered in her games (3 right answers) count in the passport, along with words you mark as learned. */
   function masteredSet() {
     const set = new Set(); const gw = state.gameWins || {};
-    Object.keys(gw).forEach((k) => { if (gw[k] >= 3 && k.indexOf('words:') === 0) { const en = k.split(':').slice(2).join(':').toLowerCase(); if (en) set.add(en); } });
+    Object.keys(gw).forEach((k) => { if (k.indexOf('words:') === 0 && SA.masteryOk(state, k, gw[k])) { const en = k.split(':').slice(2).join(':').toLowerCase(); if (en) set.add(en); } });
     return set;
   }
   const isLearned = (lang, w, ms) => !!state.learned[lkey(lang, w.id)] || (ms || masteredSet()).has(String(w.en).toLowerCase());
@@ -478,7 +478,7 @@
   }
   function progressLine() {
     const learned = Object.keys(state.learned).filter((k) => state.learned[k]).length + Object.keys(state.fmastered || {}).filter((k) => state.fmastered[k]).length;
-    const mastered = Object.keys(state.letterWins || {}).filter((k) => state.letterWins[k] >= 3).length + Object.keys(state.gameWins || {}).filter((k) => state.gameWins[k] >= 3).length;
+    const mastered = Object.keys(state.letterWins || {}).filter((k) => SA.masteryOk(state, 'letters:' + k, state.letterWins[k])).length + Object.keys(state.gameWins || {}).filter((k) => SA.masteryOk(state, k, state.gameWins[k])).length;
     return '<span>📚 ' + learned + '</span><span>🔤 ' + mastered + '</span><span>🌈 ' + (state.rainbows || 0) + '</span>';
   }
   function stageCard() {
@@ -491,11 +491,14 @@
     h += '<div class="grid wide">' + S.langs.map((l) => {
       const n = learnedCount(l.id); const t = wordsFor(l.id).length; const lv = stampLevel(l.id);
       return '<button class="stamp ' + (n >= 10 ? 'got' : '') + '" style="font:inherit;color:inherit;text-align:left;cursor:pointer" data-act="wlang" data-lang="' + l.id + '"><span class="fl">' + l.flag + '</span><div style="flex:1"><b>' + l.name + '</b><div class="progress"><i style="width:' + (t ? Math.round(n / t * 100) : 0) + '%"></i></div><span class="small muted">' + n + ' of ' + t + ' learned</span></div><span class="lv" title="' + lv[1] + '">' + lv[0] + '</span></button>';
-    }).join('') + '</div><p class="small muted">Words count when you tap "Learned" on a word card, and automatically when she masters them in her games (3 right answers). Bronze at 10 words, silver at 30, gold at all.</p>';
+    }).join('') + '</div><p class="small muted">Words count when you tap "Learned" on a word card, and automatically when she masters them in her games (3 clean right answers on 2 different days). Bronze at 10 words, silver at 30, gold at all.</p>';
     const mws = Array.from(masteredSet()).sort();
     h += '<div class="card"><b>🎈 Mastered in her games: ' + mws.length + (mws.length === 1 ? ' word' : ' words') + '</b>' +
       (mws.length ? '<div class="chips" style="flex-wrap:wrap;overflow:visible;margin-top:8px">' + mws.slice(0, 40).map((x) => '<button class="chip" data-act="say-en" data-text="' + esc(x) + '">' + esc(x) + '</button>').join('') + '</div>' + (mws.length > 40 ? '<p class="small muted">Showing 40 of ' + mws.length + '.</p>' : '')
-        : '<p class="small muted">Nothing yet. A word shows here after she answers it right 3 times in Games.</p>') + '</div>';
+        : '<p class="small muted">Nothing yet. A word shows here after she answers it right 3 times, on 2 different days, in Games.</p>') + '</div>';
+    const sp = Object.keys(state.spoken || {}).filter((k) => state.spoken[k] && k.indexOf('words:') === 0).map((k) => k.split(':').slice(2).join(':')).sort();
+    h += '<div class="card"><b>🗣️ She says it: ' + sp.length + (sp.length === 1 ? ' word' : ' words') + '</b>' +
+      (sp.length ? '<div class="chips" style="flex-wrap:wrap;overflow:visible;margin-top:8px">' + sp.slice(0, 40).map((x) => '<button class="chip" data-act="say-en" data-text="' + esc(x) + '">' + esc(x) + '</button>').join('') + '</div>' : '<p class="small muted">Games check that she recognizes a word. When you hear her say one on her own, tap "She said it" on its word card in Learn and it shows here.</p>') + '</div>';
     return h;
   }
   function viewSkills() {
@@ -888,7 +891,7 @@
       '<label class="f">Voice speed</label>' + sel('rate', [[0.6, 'Slow'], [0.8, 'Gentle (default)'], [1, 'Normal']]) +
       '<label class="f">Natural English voice (needs internet and the Groq key)</label>' + sel('neural', [['', 'Off: device voice (default)'], ['1', 'On: natural voice, falls back if it fails']]) +
       '<p><button class="btn alt small" data-act="test-voice">🔊 Test voice</button></p></div>';
-    hs += '<div class="card"><b>📖 Story character</b><p class="small muted">Who stars in the word lines and the story. Spidey is the default.</p><div class="chips">' + S.fun.heroes.map((h) => '<button class="chip" aria-pressed="' + ((state.hero || 'spidey') === h[0]) + '" data-act="hero-set" data-id="' + h[0] + '">' + h[1] + ' ' + esc(h[2] || state.nick || 'Solana') + '</button>').join('') + '</div></div>';
+    hs += '<div class="card"><b>📖 Story character</b><p class="small muted">Who stars in the word lines and the story. Solana is the default.</p><div class="chips">' + S.fun.heroes.map((h) => '<button class="chip" aria-pressed="' + ((state.hero || 'solana') === h[0]) + '" data-act="hero-set" data-id="' + h[0] + '">' + h[1] + ' ' + esc(h[2] || state.nick || 'Solana') + '</button>').join('') + '</div></div>';
     hs += '<div class="card"><b>🌳 Class unit</b><label class="f" for="s-theme">' + esc(planTheme().name) + ' start date</label><input type="date" id="s-theme" data-set="themeStart" value="' + esc(startFor(planTheme().id)) + '">' +
       '<p class="small muted">Change the unit itself in the School tab.</p></div>';
     hs += '<div class="card"><b>🎨 How her screens look</b><label class="f">Style</label>' + sel('look', [['retro', 'Retro preschool TV everywhere (default)'], ['mixed', 'Retro for kid screens only'], ['classic', 'Classic calm look']]) +

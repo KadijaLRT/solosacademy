@@ -107,13 +107,24 @@
       '<div class="row" style="justify-content:center;margin-top:8px"><button class="btn iconbtn big" data-act="ksay" data-k="sing" aria-label="Sing">🎵</button><button class="btn alt iconbtn big" data-act="ksay" data-k="slow" aria-label="Slowly">🐢</button></div>' +
       '<div class="row between" style="margin-top:14px"><button class="btn alt iconbtn big" data-act="kstep" data-d="-1"' + (t.step === 0 ? ' disabled' : '') + ' aria-label="Back">◀</button><button class="btn sun iconbtn big" data-act="kstep" data-d="1"' + (t.step === dr.steps.length - 1 ? ' disabled' : '') + ' aria-label="Next">▶</button></div></div>';
   };
+  /* Six story shapes. The word, its one true sentence, and the topic change the story; the shape is picked from the word so each word keeps its own story. */
+  const SHAPES = [
+    (H, T, w, W, F) => H + ' wanted to learn something new about ' + T + '. ' + H + ' looked up, and then ' + H + ' looked down. There it was: the word "' + w + '"! ' + F + ' "' + W + '!" said ' + H + ', and Mommy gave a big hug.',
+    (H, T, w, W, F) => 'It was a bright morning, and ' + H + ' was ready to explore. Today\'s mystery was about ' + T + '. ' + H + ' found a clue: the word "' + w + '". ' + F + ' "I know ' + w + '!" said ' + H + ', and did a happy dance.',
+    (H, T, w, W, F) => H + ' had a special job today: to tell Mommy about ' + T + '. First, ' + H + ' thought hard. Then ' + H + ' said, "' + W + '!" ' + F + ' Mommy smiled and said, "You are such a good teacher."',
+    (H, T, w, W, F) => 'A little bird and ' + H + ' explored ' + T + ' together. The bird pointed with its wing and chirped. ' + H + ' spotted the word "' + w + '"! ' + F + ' The little bird chirped, "' + W + '!" and ' + H + ' laughed.',
+    (H, T, w, W, F) => 'Knock, knock! Who is there? "' + W + '!" ' + H + ' opened the door and learned something. ' + F + ' ' + H + ' said "' + W + '" three times, and it sounded better every time.',
+    (H, T, w, W, F) => 'Before bedtime, ' + H + ' remembered one thing about ' + T + ': the word "' + w + '". ' + F + ' ' + H + ' whispered "' + W + '," and Mommy whispered it back. Then ' + H + ' went to sleep with a smile.'
+  ];
   function storyText(ctx, w, u) {
-    const H = F().hero(ctx).name; const x = w.en;
-    const fact = (SA.wordFacts && SA.wordFacts[u.id + ':' + x]) || F().H(ctx, w.spidey || '');
-    const theme = (SA.unitThemes && SA.unitThemes[u.id]) || String(u.name || '').toLowerCase();
+    const H = F().hero(ctx).name; const x = w.en; const uid = w._u || u.id; const own = SA.units.find((q) => q.id === uid) || u;
+    const fact = (SA.wordFacts && SA.wordFacts[uid + ':' + x]) || F().H(ctx, w.spidey || '');
+    const theme = (SA.unitThemes && SA.unitThemes[uid]) || String(own.name || '').toLowerCase();
     const cap = x.charAt(0).toUpperCase() + x.slice(1);
-    return 'One day, ' + H + ' went on an adventure to learn about ' + theme + '. ' + fact + ' "' + cap + '!" said ' + H + ' with a big smile. Then ' + H + ' told Mommy all about it. What a great adventure!';
+    let h = 0; for (let i = 0; i < x.length; i++) h = (h * 31 + x.charCodeAt(i)) >>> 0;
+    return SHAPES[h % SHAPES.length](H, theme, x.toLowerCase(), cap, fact);
   }
+  K.storyText = storyText;
   K.v_learn_story = function (ctx, t) {
     const u = F().unitOf(ctx); const list = F().wordsOf(ctx, u); const w = list[((t.si % list.length) + list.length) % list.length];
     return bar(true) + '<div class="card center gcard"><div class="big-em">' + SA.pic(w.emoji, w.pic || w.en) + '</div><div class="big-word" style="font-size:19px;line-height:1.45;text-align:left">' + ctx.esc(storyText(ctx, w, u)) + '</div>' +

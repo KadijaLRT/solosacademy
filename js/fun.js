@@ -82,7 +82,7 @@
   /* Story character: Spidey by default; the grown-up can pick another from her favorite shows, or Solana herself. */
   const HEROES = [['spidey', '🕷️', 'Spidey'], ['solana', '👧', ''], ['ghost', '🕸️', 'Ghost-Spider'], ['spin', '🕷️', 'Spin'], ['mirabel', '🦋', 'Mirabel'], ['simba', '🦁', 'Simba'], ['elsa', '❄️', 'Elsa'], ['poppy', '🌈', 'Poppy'], ['tarzan', '🌴', 'Tarzan']];
   F.heroes = HEROES;
-  F.hero = function (ctx) { const h = HEROES.find((x) => x[0] === ctx.state.hero) || HEROES[0]; return { id: h[0], e: h[1], name: h[2] || ctx.state.nick || 'Solana' }; };
+  F.hero = function (ctx) { const h = HEROES.find((x) => x[0] === ctx.state.hero) || HEROES[1]; return { id: h[0], e: h[1], name: h[2] || ctx.state.nick || 'Solana' }; };
   F.H = function (ctx, str) { return String(str || '').replace(/Spidey/g, F.hero(ctx).name); };
   F.say = say; F.unitOf = unitOf; F.baseUnit = baseUnit; F.pickIds = pickIds; F.wordsOf = wordsOf; F.tlFor = tlFor;
   function chipRow(ctx, items, cur, act, key) {
@@ -103,7 +103,7 @@
     let h = '<p class="muted small">' + u.emoji + ' Unit: <b>' + esc(u.name) + '</b>' + (ctx.isChild() ? '' : '. Change it in the School tab.') + '</p>' + chipRow(ctx, weeks, p.wk, 'pwk', 'w') + voiceRow(ctx);
     if (!list.length) return h + '<div class="card">No words for this week yet.</div>';
     p.i = ((p.i % list.length) + list.length) % list.length;
-    const w = list[p.i]; const tl = tlFor(ctx, w); const key = wkey(u, w); const done = !!ctx.state.fmastered[key];
+    const w = list[p.i]; const tl = tlFor(ctx, w); const said = !!(ctx.state.spoken || {})['words:' + wkey(u, w)]; const key = wkey(u, w); const done = !!ctx.state.fmastered[key];
     const allDone = list.length >= 3 && list.every((x) => ctx.state.fmastered[wkey(u, x)]);
     const wi = weeks.findIndex((x) => x[0] === p.wk); const nextWk = weeks[(wi + 1) % weeks.length][0];
     h += '<div class="card center play-card"><div class="big-em">' + w.emoji + '</div><div class="big-word">' + esc(w.en) + '</div>' +
@@ -115,6 +115,7 @@
       '<div class="row between"><button class="btn alt" data-act="pnav" data-d="-1" aria-label="Previous word">◀</button>' +
       '<button class="btn ' + (done ? 'sun' : 'alt') + '" style="flex:1" data-act="plearn">' + (done ? '⭐ Learned!' : '☆ Mark learned') + '</button>' +
       '<button class="btn alt" data-act="pnav" data-d="1" aria-label="Next word">▶</button></div>' +
+      '<p><button class="btn ' + (said ? 'sun' : 'alt') + '" style="width:100%" data-act="psaid">' + (said ? '🗣️ She says it!' : '🗣️ She said it (tap when you hear her say it)') + '</button></p>' +
       '<p class="center small muted">' + (p.i + 1) + ' of ' + list.length + '</p>' +
       (allDone ? '<div class="card note"><b>🎉 All learned!</b><p>' + (p.wk === 'All' ? 'She knows every word in this unit. Go deeper with Story time, or a craft or science idea in the School tab.' : 'She knows every word this week. Skip ahead to the next week (skipping what is mastered is called compacting), or go deeper with Story time (enrichment).') + '</p>' + (p.wk === 'All' ? '' : '<button class="btn" data-act="pwk" data-w="' + esc(nextWk) + '">Next week ▶</button> ') + '<button class="btn alt" data-act="ptab" data-t="story">Go deeper: Story</button></div>' : '');
     return h;
@@ -253,6 +254,7 @@
         else say(ctx, F.H(ctx, w.spidey), 'en-US');
         return true;
       }
+      case 'psaid': { const w = cur(); if (!w) return true; const k = 'words:' + wkey(unitOf(ctx), w); st.spoken = st.spoken || {}; st.spoken[k] = !st.spoken[k]; ctx.save(); ctx.render(true); if (st.spoken[k]) ctx.toast('She says it! 🗣️'); return true; }
       case 'plearn': { const w = cur(); if (!w) return true; const k = wkey(unitOf(ctx), w); st.fmastered = st.fmastered || {}; st.fmastered[k] = !st.fmastered[k]; ctx.save(); ctx.render(true); if (st.fmastered[k]) ctx.toast('Learned! ⭐'); return true; }
       case 'pdrill': p.drill = +d.i; p.step = 0; ctx.render(true); return true;
       case 'pstep': p.step = Math.max(0, Math.min(SA.songDrills[p.drill].steps.length - 1, p.step + +d.d)); ctx.render(true); return true;
