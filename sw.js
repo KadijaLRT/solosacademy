@@ -1,5 +1,5 @@
 /* Solo's Academy service worker: caches everything so the app works offline. */
-const CACHE = 'solos-academy-v27';
+const CACHE = 'solos-academy-v29';
 const ASSETS = [
   './',
   './index.html',
@@ -22,6 +22,7 @@ const ASSETS = [
   './js/data-basics.js',
   './js/fun.js',
   './js/games.js',
+  './js/kid.js',
   './js/data-parent.js',
   './js/parent.js',
   './js/app.js',

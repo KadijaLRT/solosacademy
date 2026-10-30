@@ -149,7 +149,7 @@
     return '';
   }
   function sayRight(ctx, g, it) {
-    const f = F(); const p = praise(ctx, g, false); ctx.toast(p + ' ⭐');
+    const f = F(); const p = praise(ctx, g, false); ctx.toast(p);
     if (g.game === 'add' && g.pop) {
       const q = g.pop; const A = SA.numbers[q.a - 1]; const B = SA.numbers[q.b - 1]; const R = SA.numbers[q.sub ? q.a - q.b - 1 : q.a + q.b - 1];
       if (esOn(ctx, g)) return thenPraise(ctx, A.es + (q.sub ? ' menos ' : ' más ') + B.es + (R.n === 1 ? ' es ' : ' son ') + R.es + '.', ctx.LBY.es.tts, p, true, 5000);
@@ -337,19 +337,17 @@
     return previewing(ctx) ? '<div class="pvbar"><span>👀 Preview. Nothing is saved.</span><button class="btn alt small" data-act="gexit">◀ Back to settings</button></div>' : '';
   }
   function S_fun_unit(ctx, id) { SA.fun.handle('unit-set', { id: id }, ctx); }
+  /* Hub: Letters, Numbers, Colors, Shapes, then every topic as its own tile. Same row of choices, no extra screen. */
   function hub(ctx, g) {
-    const st = ctx.state; const u = F().unitOf(ctx); const c = cfg(ctx); const n = st.rbBands || 0;
-    const secs = SECS.filter((k) => c.secs[k]);
+    const st = ctx.state; const c = cfg(ctx); const n = st.rbBands || 0;
+    const base = ['letters', 'numbers', 'colors', 'shapes'].filter((k) => c.secs[k]);
+    const bt = { letters: ['🔤', 'Letters'], numbers: ['🔢', 'Numbers'], colors: ['🎨', 'Colors'], shapes: ['🔷', 'Shapes'] };
+    const tiles = base.map((k) => '<button class="gbig" data-act="gsec" data-s="' + k + '"><span>' + bt[k][0] + '</span>' + bt[k][1] + '</button>').join('') +
+      (c.secs.words ? (SA.topicOrder || SA.units.map((u) => u.id)).map((id) => SA.units.find((u) => u.id === id)).filter(Boolean).map((u) =>
+        '<button class="gbig" style="background:linear-gradient(160deg,' + u.c2 + ',' + u.c1 + ')" data-act="gtopic" data-id="' + u.id + '"><span>' + u.emoji + '</span>' + ctx.esc(u.name) + (u.school ? ' 🏫' : '') + '</button>').join('') : '');
     return '<div class="card gtop"><div class="rbcol">' + rainbow(n, true) + '<div class="small muted">' + n + ' of 7 · 🌈 ' + (st.rainbows || 0) + '</div></div>' +
       '<button class="iconbtn" data-act="ghow" aria-label="How to play">❓</button></div>' +
-      '<div class="gbtns n4 secs">' + secs.map((k) => '<button class="gbig" data-act="gsec" data-s="' + k + '"><span>' + secLabel(k, u).split(' ')[0] + '</span>' + ctx.esc(secLabel(k, u).split(' ').slice(1).join(' ')) + '</button>').join('') + '<button class="gbig" data-act="gtopics"><span>🧩</span>Topics</button></div>';
-  }
-  /* Solana's pick-a-topic screen: every topic is one picture tile. School units carry a small school badge. */
-  function topicsView(ctx, g) {
-    const cur = ctx.state.unit;
-    const tiles = (SA.topicOrder || SA.units.map((u) => u.id)).map((id) => SA.units.find((u) => u.id === id)).filter(Boolean).map((u) =>
-      '<button class="gbig" style="background:linear-gradient(160deg,' + u.c2 + ',' + u.c1 + ')" aria-pressed="' + (cur === u.id) + '" data-act="gtopic" data-id="' + u.id + '"><span>' + u.emoji + '</span>' + ctx.esc(u.name) + (u.school ? ' 🏫' : '') + '</button>').join('');
-    return '<div class="gbar"><button class="btn alt backbtn" data-act="gback" aria-label="Back">◀</button><span></span><span></span></div><div class="gbtns n4 secs">' + tiles + '</div>';
+      '<div class="gbtns n4 secs">' + tiles + '</div>';
   }
   function secView(ctx, g) {
     const games = gamesFor(ctx, g.sec); const u = F().unitOf(ctx);
@@ -590,8 +588,8 @@
       if (i >= sg.lines.length) { sg.playing = false; highlight(-1); finish(ctx, g); return; }
       highlight(i); const L = sg.lines[i]; let called = false;
       const next = () => { if (called) return; called = true; i += 1; setTimeout(step, 250); };
-      const ok = F().say(ctx, L.t, L.tag, true, false, next);
-      setTimeout(next, ok ? 7000 : 1800);
+      const ok = SA.kid.sing(ctx, L.t, L.tag, next);
+      setTimeout(next, ok ? 12000 : 1800);
     };
     step();
   }
@@ -599,7 +597,7 @@
   /* ---------- finish screen ---------- */
   function doneView(ctx, g) {
     const st = ctx.state;
-    return '<div class="card hero center"><div class="big-em">🎉</div><b style="font-size:28px">' + (g.full ? 'A whole rainbow!' : 'You did it!') + '</b>' + (previewing(ctx) ? '' : '<p>+' + (g.full ? '3' : '1') + ' ⭐</p>' + rainbow(st.rbBands || 0) +
+    return '<div class="card hero center"><div class="big-em">🎉</div><b style="font-size:28px">' + (g.full ? 'A whole rainbow!' : 'You did it!') + '</b>' + (previewing(ctx) ? '' : rainbow(st.rbBands || 0) +
       '<div class="small muted">' + (g.full ? 'Rainbows made: ' + (st.rainbows || 0) : (st.rbBands || 0) + ' of 7 colors') + '</div>') +
       '<div class="row" style="justify-content:center;margin-top:10px"><button class="btn alt iconbtn big" data-act="ghub" aria-label="Games">🏠</button><button class="btn sun iconbtn big" data-act="gagain-game" aria-label="Play again">▶</button></div></div>';
   }
@@ -612,7 +610,6 @@
     if (g.screen === 'hub') h += '<h2>Games</h2>';
     if (g.screen === 'letter') return h + letterCard(ctx, g);
     if (g.screen === 'lgrid') return h + lgridView(ctx, g);
-    if (g.screen === 'topics') return h + topicsView(ctx, g);
     if (g.screen === 'sec') return h + secView(ctx, g);
     if (g.screen === 'done') return h + doneView(ctx, g);
     if (g.screen === 'play') {
@@ -657,7 +654,7 @@
     const b = g.board; if (!b || g.lock || b.done) return false;
     const tile = b.tiles.find((t) => t.key === tileEl.dataset.key); if (!tile || b.placed[tile.key]) return false;
     b.placed[tile.key] = true; b.count += 1; g.sel = null; sPop();
-    const lastOne = b.count >= b.n; const sp = praise(ctx, g, !lastOne); ctx.toast(sp + ' ⭐');
+    const lastOne = b.count >= b.n; const sp = praise(ctx, g, !lastOne); ctx.toast(sp);
     if (esOn(ctx, g)) thenPraise(ctx, numWord(ctx, g, b.count), ctx.LBY.es.tts, sp, true); else F().say(ctx, numWord(ctx, g, b.count) + '! ' + sp, 'en-US', false, true);
     if (b.count >= b.n) {
       b.done = true; g.lock = true; win(ctx, 'numbers', String(b.n));
@@ -678,7 +675,7 @@
     }
     b.filled[slot.key] = tile.key; g.sel = null; sPop();
     if (b.kind === 'drag') win(ctx, g.sec, slot.match);
-    if (b.kind === 'build') { const p = praise(ctx, g, true); ctx.toast(p + ' ⭐'); F().say(ctx, 'Letter ' + tile.match.toUpperCase() + '! ' + p, 'en-US', false, true); }
+    if (b.kind === 'build') { const p = praise(ctx, g, true); ctx.toast(p); F().say(ctx, 'Letter ' + tile.match.toUpperCase() + '! ' + p, 'en-US', false, true); }
     else if (slot.it) sayRight(ctx, g, slot.it);
     else sayRight(ctx, g, { l: slot.match, id: slot.match });
     if (boardComplete(b)) {
@@ -691,6 +688,7 @@
 
   G.handle = function (a, d, ctx) {
     const g = GS(ctx); const f = F();
+    if (a === 'ghub' || a === 'gexit' || a === 'gback' || a === 'gsec' || a === 'gtopic') SA.kid.stop();
     switch (a) {
       case 'gsec': { g.sec = d.s; g.screen = 'sec'; ctx.render(false); const nm = ({ letters: 'Letters', numbers: 'Numbers', colors: 'Colors', shapes: 'Shapes' })[d.s] || (f.unitOf(ctx).name + ' words'); f.say(ctx, nm, 'en-US', false, true); return true; }
       case 'gtoggle': { const c = cfg(ctx); c.secs[d.s] = !c.secs[d.s]; if (!SECS.some((k) => c.secs[k])) c.secs[d.s] = true; ctx.save(); ctx.render(true); return true; }
@@ -701,7 +699,6 @@
       case 'gprac': cfg(ctx).practice = d.p === '1'; ctx.save(); ctx.render(true); return true;
       case 'gpreview': g.preview = true; g.screen = 'hub'; g.game = null; g.tok++; ctx.render(false); return true;
       case 'gexit': g.preview = false; g.screen = 'hub'; g.game = null; g.tok++; g.lock = false; if (ctx.rec.active()) ctx.rec.stop(); try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) { /* ignore */ } ctx.render(false); return true;
-      case 'gtopics': g.screen = 'topics'; ctx.render(false); f.say(ctx, 'Pick a topic', 'en-US', false, true); return true;
       case 'gtopic': { S_fun_unit(ctx, d.id); g.sec = 'words'; g.screen = 'sec'; ctx.render(false); f.say(ctx, f.unitOf(ctx).name, 'en-US', false, true); return true; }
       case 'glgrid': g.screen = 'lgrid'; ctx.render(false); return true;
       case 'ghub': g.screen = 'hub'; g.game = null; g.tok++; ctx.render(false); return true;

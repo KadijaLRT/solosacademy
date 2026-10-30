@@ -19,7 +19,7 @@
   const WBY = {}; S.words.forEach((w) => { WBY[w.id] = w; });
   const CATBY = {}; S.categories.forEach((c) => { CATBY[c.id] = c; });
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-  const KID_TABS = [['games', '🎈', 'Games'], ['play', '🎬', 'Play'], ['words', '🗣️', 'Words'], ['feel', '💛', 'Feelings'], ['stars', '⭐', 'Stickers']];
+  const KID_TABS = [['games', '🎈', 'Games'], ['play', '🎬', 'Play'], ['words', '🗣️', 'Words'], ['feel', '💛', 'Feelings']];
   const PARENT_TABS = [['today', '🏠', 'Today'], ['words', '🗣️', 'Words'], ['play', '🎬', 'Play'], ['games', '🎈', 'Games'], ['feel', '💛', 'Feelings'], ['theme', '🌳', 'Theme'], ['grow', '🚀', 'Grow'], ['act', '🎭', 'Activities']];
 
   /* ---------- state ---------- */
@@ -305,7 +305,7 @@
     const sub = $('#subtitle');
     if (sub) {
       const seg = { today: 'Today’s flight plan', words: 'Word time!', play: 'Play time!', games: 'Game setup', feel: 'Feelings time', theme: 'Pick our show!', grow: 'Grow', act: 'Activities', settings: 'Settings' }[route()];
-      const kidSeg = { play: 'Play time!', games: 'Game time!', words: 'Word time!', feel: 'How do you feel?', stars: 'My stickers!' }[route()];
+      const kidSeg = { play: 'Play time!', games: 'Game time!', words: 'Word time!', feel: 'How do you feel?' }[route()];
       if (isChild()) sub.textContent = 'Hi ' + (state.nick || 'friend') + '! ' + (kidSeg || '');
       else sub.textContent = 'Hi ' + (state.parentName || 'there') + '! ' + (seg || '');
     }
@@ -418,7 +418,7 @@
   function progressLine() {
     const learned = Object.keys(state.learned).filter((k) => state.learned[k]).length + Object.keys(state.fmastered || {}).filter((k) => state.fmastered[k]).length;
     const mastered = Object.keys(state.letterWins || {}).filter((k) => state.letterWins[k] >= 3).length + Object.keys(state.gameWins || {}).filter((k) => state.gameWins[k] >= 3).length;
-    return '<span>⭐ ' + starTotal() + '</span><span>📚 ' + learned + '</span><span>🔤 ' + mastered + '</span><span>🌈 ' + (state.rainbows || 0) + '</span>';
+    return '<span>📚 ' + learned + '</span><span>🔤 ' + mastered + '</span><span>🌈 ' + (state.rainbows || 0) + '</span>';
   }
   function stageCard() {
     const lv = S.stage.level(state); const L = S.stage.LEVELS[lv]; const age = S.stage.ageText(state);
@@ -572,6 +572,7 @@
       if (i >= seq.length) { cnt.textContent = 'Great flying! 🌟'; plane.className = 'plane'; breathTimer = null; return; }
       const s = seq[i++];
       cnt.textContent = (s[0] === 'in' ? 'Breathe in ' : 'Breathe out ') + s[1];
+      if (isChild() && s[1] === 1) speak(s[0] === 'in' ? 'Breathe in' : 'Breathe out', 'en-US', true);
       plane.className = 'plane ' + (s[0] === 'in' ? 'up' : 'down');
       breathTimer = setTimeout(step, 1000);
     })();
@@ -602,7 +603,6 @@
     h += '<h2>✈️ Airplane breathing</h2><div class="card breath"><div class="plane" id="bplane">✈️</div><div class="count" id="bcount">Ready for takeoff?</div><button class="btn" data-act="breath-start">Start 3 flights</button></div>';
     return h;
   }
-  function viewStars() { return '<h2>My stickers</h2>' + S.fun.p_stick(ctx); }
   function openFeeling(id) {
     const f = S.feelings.find((x) => x.id === id); if (!f) return;
     const words = f.words.length ? S.words.filter((w) => f.words.indexOf(w.id) >= 0) : [];
@@ -699,12 +699,16 @@
     const act = items.filter((a) => a.status === 'active');
     const soon = items.filter((a) => a.status === 'next' || a.status === 'planned');
     if (act.length) return '<div class="card good"><b>✅ ' + label + '</b><div>' + act.map((a) => esc(a.name)).join(', ') + '</div></div>';
-    if (soon.length) return '<div class="card note"><b>⏳ ' + label + '</b><div>Coming: ' + soon.map((a) => esc(a.name) + (whenText(a) ? ' (' + esc(whenText(a)) + ')' : '')).join(', ') + '</div></div>';
-    return '<div class="card warn"><b>➕ ' + label + '</b><div>Nothing active. Pick one below.</div></div>';
+    if (soon.length) {
+      const rank = (a) => (a.status === 'next' ? '0' : /^\d{4}-\d{2}$/.test(a.when || '') ? '1' + a.when : a.when === 'age4' ? '2' : '3');
+      const nx = soon.slice().sort((a, b) => (rank(a) < rank(b) ? -1 : rank(a) > rank(b) ? 1 : 0))[0];
+      return '<div class="card note" style="min-width:0"><b>⏳ ' + label + ' up next</b><div>' + esc(nx.name) + (whenText(nx) ? ' <span class="muted">(' + esc(whenText(nx)) + ')</span>' : '') + '</div></div>';
+    }
+    return '<div class="card warn"><b>➕ ' + label + '</b><div>Nothing up next yet.</div></div>';
   }
   function viewAct() {
     let h = '<h2>Activities</h2><p class="muted">Goal: one sport and one art at all times. There is no limit on how many she can try.</p>';
-    h += '<div class="grid wide">' + goalTile('sport', 'Sport') + goalTile('art', 'Art') + '</div>';
+    h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' + goalTile('sport', 'Sport') + goalTile('art', 'Art') + '</div>';
     const order = ['active', 'next', 'planned', 'paused', 'done'];
     const list = state.activities.slice().sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status));
     h += '<div class="row between"><h2 style="margin:6px 0">Her list</h2><button class="btn" data-act="act-open" data-id="">＋ Add</button></div>';
@@ -791,7 +795,7 @@
     save: () => save(),
     render: (k) => render(k)
   };
-  const ROUTES = { today: viewToday, words: viewWords, play: () => S.fun.viewPlay(ctx), games: () => S.games.view(ctx), stars: viewStars, feel: () => (isChild() ? viewKidFeel() : viewFeel()), theme: viewTheme, grow: viewGrow, act: viewAct, settings: viewSettings };
+  const ROUTES = { today: viewToday, words: () => (isChild() ? S.kid.view(ctx, 'words') : viewWords()), play: () => (isChild() ? S.kid.view(ctx, 'play') : S.fun.viewPlay(ctx)), games: () => S.games.view(ctx), feel: () => (isChild() ? S.kid.view(ctx, 'feel') : viewFeel()), theme: viewTheme, grow: viewGrow, act: viewAct, settings: viewSettings };
   const KID_ROUTES = ['words', 'play', 'games'];
   function applyLook(r) {
     const un = S.units.find((x) => x.id === state.unit) || S.units[0];
@@ -801,7 +805,7 @@
   function route() {
     const r = (location.hash || '').replace('#/', '');
     if (isChild()) return KID_TABS.some((t) => t[0] === r) ? r : 'games';
-    return ROUTES[r] && r !== 'stars' ? r : (r === 'stars' ? 'words' : 'today');
+    return ROUTES[r] ? r : 'today';
   }
   function renderTabs() {
     const tabs = isChild() ? KID_TABS : PARENT_TABS; const nav = $('#tabs');
@@ -841,14 +845,14 @@
     const el = e.target.closest('[data-act]'); if (!el) return;
     const a = el.dataset.act; const d = el.dataset;
     switch (a) {
-      case 'go': closeModal(); go(d.to); break;
+      case 'go': closeModal(); if (isChild()) { ui.kid = {}; if (S.kid) S.kid.stop(); } go(d.to); break;
       case 'sset': ui.sset = d.t; render(false); break;
       case 'info': { const n = el.nextElementSibling; if (n) n.classList.toggle('lite-show'); break; }
       case 'modal-close': ui.afterPin = false; closeModal(); break;
       case 'toggle-block': {
         e.preventDefault(); e.stopPropagation();
         const k = dkey(); state.done[k] = state.done[k] || {}; state.done[k][d.b] = !state.done[k][d.b];
-        save(); render(true); if (state.done[k][d.b]) toast('Nice! +1 ⭐');
+        save(); render(true); if (state.done[k][d.b]) toast('Nice!');
         break;
       }
       case 'feel-pick': state.feelLog[dkey()] = d.id; save(); render(true); toast('Feeling saved'); break;
@@ -889,7 +893,7 @@
         if (!quiz || quiz.locked) break;
         const o = quiz.opts[+d.i];
         if (o.id === quiz.target.id) {
-          quiz.locked = true; quiz.score++; state.quizStars = (state.quizStars || 0) + 1; save(); el.classList.add('pop'); toast('Yes! ⭐');
+          quiz.locked = true; quiz.score++; state.quizStars = (state.quizStars || 0) + 1; save(); el.classList.add('pop'); toast('Yes!');
           setTimeout(() => { quiz.i++; renderQuiz(); }, 800);
         } else { el.classList.add('shake'); setTimeout(() => el.classList.remove('shake'), 400); }
         break;
@@ -941,7 +945,7 @@
       case 'pin-set-open': openPinSet(); break;
       case 'pin-save': savePin(); break;
       case 'pin-remove': state.pinHash = ''; state.pinSalt = ''; save(); render(true); toast('PIN removed. You will be asked for a new one next time you switch to her view.'); break;
-      default: if (!S.games.handle(a, d, ctx)) S.fun.handle(a, d, ctx); break;
+      default: if (!S.games.handle(a, d, ctx) && !S.kid.handle(a, d, ctx)) S.fun.handle(a, d, ctx); break;
     }
   });
 

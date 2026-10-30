@@ -12,9 +12,6 @@
     '<circle cx="50" cy="48" r="28" fill="#ffd23f"/><circle cx="39" cy="42" r="5" fill="#2b2250"/><circle cx="61" cy="42" r="5" fill="#2b2250"/>' +
     '<path d="M36 56 Q50 72 64 56 Z" fill="#ff4d6d"/><circle cx="30" cy="54" r="5" fill="#ff8fa3" stroke="none"/><circle cx="70" cy="54" r="5" fill="#ff8fa3" stroke="none"/></g></svg>';
 
-  const STICKERS = [
-    [3, '🌟'], [8, '🦋'], [15, '🚀'], [25, '🦁'], [40, '🌈'], [60, '🏆'], [90, '👑'], [130, '🦸']
-  ];
 
   /* ---------- helpers ---------- */
   function P(ctx) {
@@ -71,7 +68,7 @@
   /* ---------- PLAY tab ---------- */
   F.viewPlay = function (ctx) {
     const p = P(ctx);
-    const tabs = [['cards', '🃏 Words'], ['sing', '🎵 Sing'], ['story', '🕷️ Story'], ['stick', '⭐ Stickers']];
+    const tabs = [['cards', '🃏 Words'], ['sing', '🎵 Sing'], ['story', '🕷️ Story']];
     return '<h2>Play</h2>' + chipRow(ctx, tabs, p.tab, 'ptab', 't') + F['p_' + p.tab](ctx, p);
   };
 
@@ -130,21 +127,6 @@
       '<div class="card"><b>Feelings in the ' + esc(u.name) + ' story</b><p style="font-size:19px">' + esc(fb.q) + '</p>' +
       '<div class="grid g3">' + SA.playFeelings.map((f) => '<button class="wc" data-act="pfeel" data-id="' + f.id + '"><span class="em">' + f.emoji + '</span><span class="en">' + f.id + ' / ' + f.es + '</span></button>').join('') + '</div>' +
       (p.res ? '<p><b>' + esc(p.res) + '</b></p>' : '') + '<button class="btn alt small" data-act="pfnext">Next question ▶</button></div>';
-  };
-
-  F.p_stick = function (ctx) {
-    const st = ctx.state; const total = ctx.starTotal(); const earned = STICKERS.filter((s) => total >= s[0]).length;
-    const next = STICKERS.find((s) => total < s[0]);
-    const learned = Object.keys(st.learned).filter((k) => st.learned[k]).length + Object.keys(st.fmastered || {}).filter((k) => st.fmastered[k]).length;
-    return '<div class="card hero center"><div class="big-em">⭐</div><b style="font-size:26px">' + total + (total === 1 ? ' star!' : ' stars!') + '</b>' +
-      '<p>' + (next ? (next[0] - total) + ' more for the next sticker.' : 'Every sticker earned. Amazing!') + '</p></div>' +
-      '<div class="grid g3 sticker-board">' + STICKERS.map((s) => total >= s[0]
-        ? '<div class="card center sticker on"><div class="big-em">' + s[1] + '</div><div class="small muted">' + s[0] + ' stars</div></div>'
-        : '<div class="card center sticker"><div class="big-em">🔒</div><div class="small muted">' + s[0] + ' stars</div></div>').join('') + '</div>' +
-      '<div class="grid g3"><div class="card center"><b style="font-size:24px">' + learned + '</b><div class="small muted">words learned</div></div>' +
-      '<div class="card center"><b style="font-size:24px">' + (st.songDays || []).length + '</b><div class="small muted">singing days</div></div>' +
-      '<div class="card center"><b style="font-size:24px">' + earned + '</b><div class="small muted">stickers</div></div></div>' +
-      (ctx.isChild() ? '' : '<p class="small muted center">Stars come from finished stops on Today, words she says, quiz answers, and singing days.</p>');
   };
 
   /* ---------- UNITS (Theme tab) ---------- */
