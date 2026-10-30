@@ -20,9 +20,26 @@
   function shuffle(a) { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = b[i]; b[i] = b[j]; b[j] = t; } return b; }
   function pick(a, n) { return shuffle(a).slice(0, n); }
   function GS(ctx) {
-    if (!ctx.ui.games) ctx.ui.games = { sec: 'letters', game: null, screen: 'hub', lang: 'en', easy: true, range: '5', letter: 0, tok: 0, lock: false, sel: null, pop: null, board: null, sing: null, told: {} };
+    if (!ctx.ui.games) ctx.ui.games = { sec: 'letters', game: null, screen: 'hub', preview: false, lang: 'en', easy: true, range: '5', letter: 0, tok: 0, lock: false, sel: null, pop: null, board: null, sing: null, told: {} };
     return ctx.ui.games;
   }
+  /* Grown-up settings for how she plays. Saved in state.gameCfg and read by Solana's games. */
+  const SECS = ['letters', 'numbers', 'colors', 'shapes', 'words'];
+  function cfg(ctx) {
+    const st = ctx.state; const c = (st.gameCfg = st.gameCfg || {});
+    c.secs = c.secs || {}; SECS.forEach((k) => { if (c.secs[k] === undefined) c.secs[k] = true; });
+    if (!SECS.some((k) => c.secs[k])) c.secs.letters = true;
+    if (c.lang !== 'tl') c.lang = 'en';
+    if (c.range !== '10') c.range = '5';
+    if (c.easy === undefined) c.easy = true;
+    c.practice = !!c.practice;
+    return c;
+  }
+  function sync(ctx, g) {
+    const c = cfg(ctx); g.lang = c.lang; g.range = c.range; g.easy = c.easy; g.practice = c.practice;
+    if (!c.secs[g.sec]) g.sec = SECS.filter((k) => c.secs[k])[0];
+  }
+  const previewing = (ctx) => !ctx.isChild() && !!GS(ctx).preview;
 
   /* ---------- sound effects (tiny synth, no files) ---------- */
   let ac = null;
@@ -139,6 +156,7 @@
 
   /* ---------- rewards ---------- */
   function reward(ctx) {
+    if (previewing(ctx)) return false;
     const st = ctx.state; st.gameStars = (st.gameStars || 0) + 1; st.rbBands = (st.rbBands || 0) + 1; let full = false;
     if (st.rbBands >= 7) { st.rbBands = 0; st.rainbows = (st.rainbows || 0) + 1; st.gameStars += 2; full = true; }
     ctx.save(); return full;
@@ -150,6 +168,7 @@
     return sec === 'letters' ? ((st.letterWins || {})[id] || 0) : ((st.gameWins || {})[winKey(ctx, sec, id)] || 0);
   }
   function win(ctx, sec, id) {
+    if (previewing(ctx)) return;
     const st = ctx.state; const was = winsOf(ctx, sec, id);
     if (sec === 'letters') { st.letterWins = st.letterWins || {}; st.letterWins[id] = was + 1; }
     else { st.gameWins = st.gameWins || {}; st.gameWins[winKey(ctx, sec, id)] = was + 1; }
@@ -167,15 +186,10 @@
     if (items.length < k) items = items.concat(pick(all.filter((x) => items.indexOf(x) < 0), k - items.length));
     return items;
   }
-  const practiceTag = (g) => (g.practice ? ' · 🎯' : '');
-  function rainbow(bands) {
-    let h = '<div class="rb" role="img" aria-label="Rainbow, ' + bands + ' of 7 colors">';
-    for (let k = 0; k < 7; k++) { const w = 220 - k * 24; h += '<i style="width:' + w + 'px;height:' + (w / 2) + 'px;border-color:' + (k < bands ? BANDS[k] : (k % 2 ? 'rgba(120,120,150,.32)' : 'rgba(120,120,150,.16)')) + '"></i>'; }
+  function rainbow(bands, small) {
+    let h = '<div class="rb' + (small ? ' sm' : '') + '" role="img" aria-label="Rainbow, ' + bands + ' of 7 colors">';
+    for (let k = 0; k < 7; k++) { const w = small ? 132 - k * 14 : 220 - k * 24; h += '<i style="width:' + w + 'px;height:' + (w / 2) + 'px;border-color:' + (k < bands ? BANDS[k] : (k % 2 ? 'rgba(120,120,150,.32)' : 'rgba(120,120,150,.16)')) + '"></i>'; }
     return h + '</div>';
-  }
-  function rainbowCard(st) {
-    const n = st.rbBands || 0;
-    return '<div class="card center">' + rainbow(n) + '<b>' + (n >= 7 ? '🌈 Rainbow!' : n + ' of 7 colors') + '</b><div class="small muted">Rainbows made: ' + (st.rainbows || 0) + '. Finish a game to add a color.</div></div>';
   }
   function chips(ctx, items, cur, act, key) {
     return '<div class="chips">' + items.map((t) => '<button class="chip" aria-pressed="' + (String(cur) === String(t[0])) + '" data-act="' + act + '" data-' + key + '="' + ctx.esc(t[0]) + '">' + t[1] + '</button>').join('') + '</div>';
@@ -199,7 +213,7 @@
     sing: ['Press the sing button and sing along with me. Press the clap button to clap!', 'Toca el botón de cantar y canta conmigo. Toca el botón de aplaudir y aplaude.']
   };
   function howKey(g) {
-    if (g.screen === 'hub') return 'hub';
+    if (g.screen !== 'play') return 'hub';
     if (g.game === 'pop' || g.game === 'drag') return g.game + SUFFIX[g.sec];
     return g.game;
   }
@@ -220,10 +234,10 @@
       ['Shapes', 'shapes', SA.shapes.map((x) => ({ id: x.id, label: x.en }))],
       [u.name + ' words', 'words', wordItems(ctx).map((x) => ({ id: x.id, label: x.e + ' ' + x.en }))]
     ];
-    let h = '<div class="card"><b>Her progress</b><p class="small muted">Counted from the games. A piece is mastered after 3 right answers. Green = mastered, yellow = started, gray = not yet. Only grown-ups see this.</p>';
+    let h = '<div class="card"><b>Her progress</b><p class="small muted">Counted from the games. A piece is mastered after 3 right answers. Green = mastered, yellow = started, gray = not yet. Turn on Practice above to aim her games at the yellow and gray ones.</p>';
     defs.forEach((d) => {
       const rows = d[2].map((x) => ({ x, n: winsOf(ctx, d[1], x.id) })); const done = rows.filter((r) => r.n >= 3).length;
-      h += '<div style="margin:10px 0 2px"><b>' + ctx.esc(d[0]) + '</b> <span class="small muted">' + done + ' of ' + rows.length + ' mastered</span> ' + (done < rows.length ? '<button class="btn alt small" data-act="gpracticego" data-s="' + d[1] + '">🎯 Practice</button>' : '<span class="pill">All mastered 🌈</span>') + '</div><div class="pgrid">' +
+      h += '<div style="margin:10px 0 2px"><b>' + ctx.esc(d[0]) + '</b> <span class="small muted">' + done + ' of ' + rows.length + ' mastered</span> ' + (done < rows.length ? '' : '<span class="pill">All mastered 🌈</span>') + '</div><div class="pgrid">' +
         rows.map((r) => '<span class="pbadge ' + (r.n >= 3 ? 'm' : r.n > 0 ? 's' : '') + '" title="' + r.n + ' right">' + ctx.esc(r.x.label) + '</span>').join('') + '</div>';
     });
     const nextUp = [];
@@ -232,31 +246,54 @@
     return h + '</div>';
   }
 
-  /* ---------- hub ---------- */
+  /* ---------- grown-up view: choose what she learns and how she plays ---------- */
+  const secLabel = (k, u) => ({ letters: '🔤 Letters', numbers: '🔢 Numbers', colors: '🎨 Colors', shapes: '🔷 Shapes', words: u.emoji + ' ' + u.name + ' words' })[k];
+  function settingsView(ctx) {
+    const f = F(); const u = f.unitOf(ctx); const c = cfg(ctx); const sample = wordItems(ctx)[0]; const es = focus(ctx) === 'es';
+    const on = (cond) => String(!!cond);
+    const grp = (label, hint, body) => '<div class="srow"><div class="slabel">' + label + '</div>' + body + (hint ? '<div class="small muted">' + hint + '</div>' : '') + '</div>';
+    let h = '<div class="card"><b>What she plays</b><p class="small muted">Turn sections on or off. Solana only sees the ones that are on.</p><div class="chips">' +
+      SECS.map((k) => '<button class="chip" aria-pressed="' + on(c.secs[k]) + '" data-act="gtoggle" data-s="' + k + '">' + (c.secs[k] ? '✓ ' : '') + secLabel(k, u) + '</button>').join('') + '</div>' +
+      '<div class="small muted">Unit words follow the show you picked in the Theme tab.</div></div>';
+    h += '<div class="card"><b>How she plays</b>' +
+      grp('Say it in', es ? 'Numbers, colors, shapes, and unit words switch to ' + (sample ? sample.tl.name : 'her second language') + '. Praise is always English.' : 'Unit words can use her second language. Numbers, colors, and shapes use Spanish only when Spanish is her focus language.',
+        chips(ctx, [['en', '🇺🇸 English'], ['tl', sample ? sample.tl.flag + ' ' + sample.tl.name : '🌎 Second language']], c.lang, 'glang', 'l')) +
+      grp('Numbers', 'Used by the Numbers games and Count it.', chips(ctx, [['5', '1 to 5'], ['10', '1 to 10']], c.range, 'grange', 'r')) +
+      grp('Build a word', 'Easy gives her the first letter. Hard makes her spell all of it.', chips(ctx, [['1', 'Easy: 1 missing letter'], ['0', 'Hard: spell it all']], c.easy ? '1' : '0', 'geasy', 'e')) +
+      grp('Practice', 'Aim the games at letters, numbers, and words she has not mastered yet.', chips(ctx, [['0', '🎲 Everything'], ['1', '🎯 What she is missing']], c.practice ? '1' : '0', 'gprac', 'p')) +
+      grp('Spoken instructions', 'A voice explains how to play the first time she opens each game.', chips(ctx, [['1', '🔊 On'], ['0', '🔇 Off']], helpOn(ctx) ? '1' : '0', 'ghelp', 'v')) + '</div>';
+    h += '<div class="card center"><button class="btn sun" data-act="gpreview">👀 Try Solana’s games</button><p class="small muted" style="margin-bottom:0">Nothing you do in the preview counts toward her stars or progress.</p></div>';
+    h += '<div class="card note"><b>Her device</b><p class="small" style="margin-bottom:0">These choices are saved on this device. To copy them to Solana’s device, make a voice pack in Settings and import it there. It carries your recordings and these game settings.</p></div>';
+    return h + progressCard(ctx);
+  }
+
+  /* ---------- Solana's view: big and simple ---------- */
+  function previewBar(ctx) {
+    return previewing(ctx) ? '<div class="pvbar"><span>👀 Preview. Nothing is saved.</span><button class="btn alt small" data-act="gexit">◀ Back to settings</button></div>' : '';
+  }
   function hub(ctx, g) {
-    const f = F(); const st = ctx.state; const u = f.unitOf(ctx); const child = ctx.isChild();
-    const secs = [['letters', '🔤 Letters'], ['numbers', '🔢 Numbers'], ['colors', '🎨 Colors'], ['shapes', '🔷 Shapes'], ['words', u.emoji + ' ' + u.name + ' words']];
-    let h = rainbowCard(st) + '<div class="row" style="justify-content:center"><button class="btn small" data-act="ghow">🔊 How to play</button></div>' + chips(ctx, secs, g.sec, 'gsec', 's');
-    if (g.sec === 'words') {
-      const sample = wordItems(ctx)[0];
-      if (sample) h += '<p class="small muted" style="margin:0">Say the words in:</p>' + chips(ctx, [['en', '🇺🇸 English'], ['tl', sample.tl.flag + ' ' + sample.tl.name]], g.lang, 'glang', 'l');
-      if (!child) h += '<p class="small muted">Words come from the unit you picked in the Theme tab. Build a word always uses English spelling.</p>';
-    } else if (g.sec !== 'letters' && focus(ctx) === 'es') {
-      h += '<p class="small muted" style="margin:0">Say it in:</p>' + chips(ctx, [['en', '🇺🇸 English'], ['tl', '🇪🇸 Spanish']], g.lang, 'glang', 'l');
-    }
-    if (g.sec === 'numbers') h += '<p class="small muted" style="margin:0">Numbers:</p>' + chips(ctx, [['5', '1 to 5'], ['10', '1 to 10']], g.range, 'grange', 'r');
-    const games = SEC_GAMES[g.sec];
-    h += '<div class="gbtns' + (games.length === 4 ? ' n4' : '') + '">' + games.map((k) => '<button class="gbig" data-act="gstart" data-g="' + k + '"><span>' + GAME_DEF[k][0] + '</span>' + GAME_DEF[k][1] + '</button>').join('') + '</div>';
-    if (games.indexOf('build') >= 0) h += '<p class="small muted" style="margin:6px 0 0">Build a word:</p>' + chips(ctx, [['1', '1 missing letter'], ['0', 'Spell it all']], g.easy ? '1' : '0', 'geasy', 'e');
-    if (games.indexOf('pop') >= 0) h += '<p class="small muted" style="margin:6px 0 0">Practice:</p>' + chips(ctx, [['0', '🎲 Everything'], ['1', '🎯 What I am missing']], g.practice ? '1' : '0', 'gprac', 'p');
-    h += '<p class="small muted" style="margin:6px 0 0">Spoken instructions when a game starts:</p>' + chips(ctx, [['1', '🔊 On'], ['0', '🔇 Off']], helpOn(ctx) ? '1' : '0', 'ghelp', 'v');
-    if (g.sec === 'letters') {
-      const wins = st.letterWins || {};
-      h += '<div class="card"><b>All the letters</b><p class="small muted">Tap a letter to learn it. A 🌈 means she has it!</p><div class="lgrid">' +
-        SA.letters.map((x, i) => '<button class="lbtn" data-act="gletter" data-i="' + i + '" aria-label="Letter ' + x.l + '">' + x.l + x.l.toLowerCase() + ((wins[x.l] || 0) >= 3 ? '<em>🌈</em>' : '') + '</button>').join('') + '</div></div>';
-    }
-    if (!child) h += progressCard(ctx);
-    return h;
+    const st = ctx.state; const u = F().unitOf(ctx); const c = cfg(ctx); const n = st.rbBands || 0;
+    const secs = SECS.filter((k) => c.secs[k]);
+    return '<div class="card gtop"><div class="rbcol">' + rainbow(n, true) + '<div class="small muted">' + n + ' of 7 · 🌈 ' + (st.rainbows || 0) + '</div></div>' +
+      '<button class="iconbtn" data-act="ghow" aria-label="How to play">❓</button></div>' +
+      '<div class="gbtns n4 secs">' + secs.map((k) => '<button class="gbig" data-act="gsec" data-s="' + k + '"><span>' + secLabel(k, u).split(' ')[0] + '</span>' + ctx.esc(secLabel(k, u).split(' ').slice(1).join(' ')) + '</button>').join('') + '</div>';
+  }
+  function secView(ctx, g) {
+    const games = SEC_GAMES[g.sec]; const u = F().unitOf(ctx);
+    return '<div class="gbar"><button class="btn alt small" data-act="gback">◀ Back</button><span class="gtitle">' + ctx.esc(secLabel(g.sec, u)) + '</span><button class="iconbtn" data-act="ghow" aria-label="How to play">❓</button></div>' +
+      '<div class="gbtns' + (games.length === 4 ? ' n4' : '') + '">' + games.map((k) => '<button class="gbig" data-act="gstart" data-g="' + k + '"><span>' + GAME_DEF[k][0] + '</span>' + GAME_DEF[k][1] + '</button>').join('') + '</div>' +
+      (g.sec === 'letters' ? '<button class="gbig wide" data-act="glgrid"><span>🔤</span>See all the letters</button>' : '');
+  }
+  function lgridView(ctx, g) {
+    const wins = ctx.state.letterWins || {};
+    return '<div class="gbar"><button class="btn alt small" data-act="gback">◀ Back</button><span class="gtitle">🔤 Letters</span><span></span></div>' +
+      '<div class="lgrid">' + SA.letters.map((x, i) => '<button class="lbtn" data-act="gletter" data-i="' + i + '" aria-label="Letter ' + x.l + '">' + x.l + x.l.toLowerCase() + ((wins[x.l] || 0) >= 3 ? '<em>🌈</em>' : '') + '</button>').join('') + '</div>';
+  }
+  /* top bar inside a game: back, progress dots, and a small help icon */
+  function bar(done, total) {
+    let dots = '';
+    if (total) { dots = '<span class="dots" role="img" aria-label="' + done + ' of ' + total + '">'; for (let i = 0; i < total; i++) dots += '<i class="' + (i < done ? 'on' : '') + '"></i>'; dots += '</span>'; } else dots = '<span></span>';
+    return '<div class="gbar"><button class="btn alt small" data-act="gback">◀ Back</button>' + dots + '<button class="iconbtn" data-act="ghow" aria-label="How to play">❓</button></div>';
   }
 
   /* ---------- letter card ---------- */
@@ -297,8 +334,8 @@
   }
   function popView(ctx, g) {
     const esc = ctx.esc; const p = g.pop; const t = p.target;
-    return '<div class="row between"><button class="btn alt small" data-act="gback">◀ Back</button><span class="pill">Balloon ' + (p.n + 1) + ' of ' + POP_ROUNDS + practiceTag(g) + '</span></div>' +
-      '<div class="card center"><div class="gprompt">' + esc(popPrompt(ctx, g, t)) + '</div><button class="btn small" data-act="gagain">🔊 Hear again</button> <button class="btn alt small" data-act="ghow">❓ How to play</button></div>' +
+    return bar(p.n, POP_ROUNDS) +
+      '<div class="card center gcard"><div class="gprompt">' + esc(popPrompt(ctx, g, t)) + '</div><button class="iconbtn" data-act="gagain" aria-label="Hear again">🔊</button></div>' +
       '<div class="balloons">' + p.opts.map((o, i) => {
         const col = g.sec === 'colors' ? o.c : g.sec === 'shapes' ? '#ffffff' : BALLOON[(i + (p.n * 2)) % BALLOON.length];
         return '<button class="balloon" data-act="gpop" data-id="' + esc(o.id) + '" style="--c:' + col + ';--d:' + (i * 0.35) + 's" aria-label="' + esc(g.sec === 'letters' ? 'Letter ' + o.l : (g.sec === 'colors' ? itemName(ctx, g, o) + (esOn(ctx, g) ? '' : ' balloon') : itemName(ctx, g, o))) + '">' + balloonFace(g, o) + '</button>';
@@ -372,8 +409,9 @@
       return '<button class="slot' + cls + '" data-act="gslot" data-key="' + s.key + '" data-match="' + esc(s.match) + '" aria-label="Empty spot">' + s.empty + '</button>';
     }).join('');
     const tiles = b.tiles.map((t) => placed[t.key] ? '' : '<div class="tile' + (g.sel === t.key ? ' sel' : '') + '" data-key="' + t.key + '" data-match="' + esc(t.match) + '" role="button" tabindex="0">' + t.html + '</div>').join('');
-    return '<div class="row between"><button class="btn alt small" data-act="gback">◀ Back</button><span class="pill">' + (b.kind === 'build' ? 'Build a word' : 'Match it' + practiceTag(g)) + '</span></div>' +
-      '<div class="card center">' + top + '<button class="btn alt small" data-act="ghow">❓ How to play</button></div>' +
+    const need = b.slots.filter((s) => !s.fixed); const got = need.filter((s) => b.filled[s.key]).length;
+    return bar(got, need.length) +
+      '<div class="card center gcard">' + top + '</div>' +
       '<div class="slots' + (b.kind === 'build' ? ' build' : '') + '">' + slots + '</div><div class="tiles">' + tiles + '</div>';
   }
   function countPrompt(ctx, g, b) { return 'Put ' + SA.numbers[b.n - 1].en + ' ' + (b.n === 1 ? b.thing.s : b.thing.p) + ' in the basket!'; }
@@ -381,8 +419,8 @@
     const esc = ctx.esc; const b = g.board;
     const inBasket = b.tiles.filter((t) => b.placed[t.key]).map((t) => t.html).join('');
     const tiles = b.tiles.map((t) => b.placed[t.key] ? '' : '<div class="tile sm' + (g.sel === t.key ? ' sel' : '') + '" data-key="' + t.key + '" data-match="x" role="button" tabindex="0">' + t.html + '</div>').join('');
-    return '<div class="row between"><button class="btn alt small" data-act="gback">◀ Back</button><span class="pill">Count it' + practiceTag(g) + '</span></div>' +
-      '<div class="card center"><div class="gprompt">' + esc(countPrompt(ctx, g, b)) + '</div><button class="btn small" data-act="gagain">🔊 Hear again</button> <button class="btn alt small" data-act="ghow">❓ How to play</button></div>' +
+    return bar(b.count, b.n) +
+      '<div class="card center gcard"><div class="gprompt">' + esc(countPrompt(ctx, g, b)) + '</div><button class="iconbtn" data-act="gagain" aria-label="Hear again">🔊</button></div>' +
       '<div class="slots"><button class="slot basket" data-act="gslot" data-key="basket" aria-label="Basket"><span class="bk-items">' + inBasket + '</span><b class="bk-n">' + (b.count || '') + '</b></button></div>' +
       '<div class="tiles">' + tiles + '</div>';
   }
@@ -414,12 +452,12 @@
   }
   function singView(ctx, g) {
     const sg = g.sing; const isNum = g.sec === 'numbers';
-    return '<div class="row between"><button class="btn alt small" data-act="gback">◀ Back</button><span class="pill">Sing it</span></div>' +
+    return bar(0, 0) +
       '<div class="card center play-card"><div class="big-em">' + sg.big + '</div>' +
       '<div class="row" style="justify-content:center"><button class="btn" data-act="gsing">▶ Sing with me</button><button class="btn sun" data-act="gclap" id="clapBtn">👏 Clap!</button></div>' +
       '<p class="small muted" style="margin:6px 0 0">Claps: <b id="clapN">' + sg.claps + '</b></p>' +
       '<div class="clines">' + sg.lines.map((l, i) => '<div class="cline" data-i="' + i + '">' + l.html + '</div>').join('') + '</div>' +
-      '<div class="row" style="justify-content:center"><button class="btn alt small" data-act="ghow">❓ How to play</button>' + (isNum ? '' : '<button class="btn alt small" data-act="gnextsong">➡ Next word</button>') + '</div></div>';
+      (isNum ? '' : '<div class="row" style="justify-content:center"><button class="btn alt small" data-act="gnextsong">➡ Next word</button></div>') + '</div>';
   }
   function highlight(i) { Array.prototype.forEach.call(document.querySelectorAll('.cline'), (el, k) => el.classList.toggle('on', k === i)); }
   function singAlong(ctx, g) {
@@ -439,14 +477,20 @@
   /* ---------- finish screen ---------- */
   function doneView(ctx, g) {
     const st = ctx.state;
-    return '<div class="card hero center"><div class="big-em">🎉</div><b style="font-size:28px">' + (g.full ? 'A whole rainbow!' : 'You did it!') + '</b><p>+' + (g.full ? '3' : '1') + ' ⭐</p>' + rainbow(st.rbBands || 0) +
-      '<div class="small muted">' + (g.full ? 'Rainbows made: ' + (st.rainbows || 0) : (st.rbBands || 0) + ' of 7 colors') + '</div>' +
-      '<div class="row" style="justify-content:center;margin-top:10px"><button class="btn sun" data-act="gagain-game">▶ Play again</button><button class="btn alt" data-act="gback">Games</button></div></div>';
+    return '<div class="card hero center"><div class="big-em">🎉</div><b style="font-size:28px">' + (g.full ? 'A whole rainbow!' : 'You did it!') + '</b>' + (previewing(ctx) ? '' : '<p>+' + (g.full ? '3' : '1') + ' ⭐</p>' + rainbow(st.rbBands || 0) +
+      '<div class="small muted">' + (g.full ? 'Rainbows made: ' + (st.rainbows || 0) : (st.rbBands || 0) + ' of 7 colors') + '</div>') +
+      '<div class="row" style="justify-content:center;margin-top:10px"><button class="btn alt" data-act="ghub">Games</button><button class="btn sun" data-act="gagain-game">▶ Play again</button></div></div>';
   }
 
   G.view = function (ctx) {
-    const g = GS(ctx); let h = '<h2>Games</h2>';
+    const g = GS(ctx); const child = ctx.isChild();
+    if (!child && !g.preview) return '<h2>Game settings</h2>' + settingsView(ctx);
+    if (g.screen !== 'play') sync(ctx, g);
+    let h = previewBar(ctx);
+    if (g.screen === 'hub') h += '<h2>Games</h2>';
     if (g.screen === 'letter') return h + letterCard(ctx, g);
+    if (g.screen === 'lgrid') return h + lgridView(ctx, g);
+    if (g.screen === 'sec') return h + secView(ctx, g);
     if (g.screen === 'done') return h + doneView(ctx, g);
     if (g.screen === 'play') {
       if (g.game === 'pop') return h + popView(ctx, g);
@@ -459,6 +503,7 @@
 
   /* ---------- flow ---------- */
   function startGame(ctx, g, which) {
+    sync(ctx, g);
     if (g.sec === 'words' && wordItems(ctx).length < 4) { ctx.toast('This unit needs at least 4 words.'); return; }
     if (SEC_GAMES[g.sec].indexOf(which) < 0) return;
     if (g.practice && (which === 'pop' || which === 'drag' || which === 'count')) { const all = itemsFor(ctx, g); if (all.length && all.every((x) => winsOf(ctx, g.sec, x.id) >= 3)) ctx.toast('Everything here is mastered! Playing with everything.'); }
@@ -524,17 +569,21 @@
   G.handle = function (a, d, ctx) {
     const g = GS(ctx); const f = F();
     switch (a) {
-      case 'gsec': g.sec = d.s; ctx.render(true); return true;
-      case 'glang': g.lang = d.l; ctx.render(true); { const s = itemsFor(ctx, g)[0]; if (s && g.sec !== 'letters') sayItem(ctx, g, s); } return true;
-      case 'grange': g.range = d.r; ctx.render(true); return true;
-      case 'geasy': g.easy = d.e === '1'; ctx.render(true); return true;
-      case 'gprac': g.practice = d.p === '1'; ctx.render(true); return true;
-      case 'gpracticego': g.sec = d.s; g.practice = true; startGame(ctx, g, 'pop'); return true;
+      case 'gsec': g.sec = d.s; g.screen = 'sec'; ctx.render(false); return true;
+      case 'gtoggle': { const c = cfg(ctx); c.secs[d.s] = !c.secs[d.s]; if (!SECS.some((k) => c.secs[k])) c.secs[d.s] = true; ctx.save(); ctx.render(true); return true; }
+      case 'glang': cfg(ctx).lang = d.l; ctx.save(); ctx.render(true); return true;
+      case 'grange': cfg(ctx).range = d.r; ctx.save(); ctx.render(true); return true;
+      case 'geasy': cfg(ctx).easy = d.e === '1'; ctx.save(); ctx.render(true); return true;
+      case 'gprac': cfg(ctx).practice = d.p === '1'; ctx.save(); ctx.render(true); return true;
+      case 'gpreview': g.preview = true; g.screen = 'hub'; g.game = null; g.tok++; ctx.render(false); return true;
+      case 'gexit': g.preview = false; g.screen = 'hub'; g.game = null; g.tok++; g.lock = false; if (ctx.rec.active()) ctx.rec.stop(); try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) { /* ignore */ } ctx.render(false); return true;
+      case 'glgrid': g.screen = 'lgrid'; ctx.render(false); return true;
+      case 'ghub': g.screen = 'hub'; g.game = null; g.tok++; ctx.render(false); return true;
       case 'gstart': startGame(ctx, g, d.g); return true;
       case 'ghow': sayHow(ctx, g, howKey(g)); return true;
       case 'ghelp': ctx.state.gameHelp = d.v === '1'; ctx.save(); ctx.render(true); return true;
       case 'gback':
-        g.screen = 'hub'; g.game = null; g.tok++; g.lock = false; if (ctx.rec.active()) ctx.rec.stop();
+        g.screen = g.screen === 'letter' ? 'lgrid' : (g.screen === 'lgrid' || g.screen === 'play' || g.screen === 'done') ? 'sec' : 'hub'; g.game = null; g.tok++; g.lock = false; if (ctx.rec.active()) ctx.rec.stop();
         try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) { /* ignore */ }
         ctx.render(false); return true;
       case 'gagain': promptSayAny(ctx, g); return true;

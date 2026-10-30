@@ -45,7 +45,7 @@ This app merges the earlier Sky Academy app with the Little Learners play featur
 
 ## Games tab (for Solana)
 
-The Games tab is the first tab and the opening screen in Solana's view. The games are original and use ideas common to toddler learning apps (short rounds, big pictures, a friendly voice, a progress reward). Nothing is copied from any other app. A right answer is praised out loud in English every time ("Green! Great job!"), also in Spanish mode (the Spanish word first, then the English praise). A wrong try wobbles, says what she picked ("That is blue. Try again!"), and nothing is lost.
+The Games tab is the first tab and the opening screen in Solana's view. The two views are different on purpose. **Solana's view only plays:** big section buttons, then big game buttons, a small ❓ for spoken help, and progress dots. No settings. **Your view is Game settings:** you choose what she learns and how she plays, then tap **Try Solana's games** to preview (a preview never saves stars or progress). The games are original and use ideas common to toddler learning apps (short rounds, big pictures, a friendly voice, a progress reward). Nothing is copied from any other app. A right answer is praised out loud in English every time ("Green! Great job!"), also in Spanish mode (the Spanish word first, then the English praise). A wrong try wobbles, says what she picked ("That is blue. Try again!"), and nothing is lost.
 
 Five sections, with the games each one has:
 
@@ -61,18 +61,19 @@ Five sections, with the games each one has:
 - **Match it!** Drag a piece to its match, or tap a piece and then tap its spot.
 - **Count it!** Drag the right number of things into the basket and count out loud with the app.
 - **Sing it!** Short original chants made from the unit word (or counting up to 5 or 10), with a clap button. The chants are not from any existing song.
-- **Build a word:** drag letters into the empty boxes. "1 missing letter" is easy, "Spell it all" is harder. Spelling is always English.
+- **Build a word:** drag letters into the empty boxes. Easy has 1 missing letter, Hard spells it all. Spelling is always English.
 - **Rainbow:** finishing a game adds a color (and a star). Seven colors make a rainbow, which gives bonus stars. A letter gets a 🌈 after she gets it right 3 times.
-- **Her progress (parent view only):** at the bottom of the Games screen, every letter, number, color, shape, and unit word shows green (mastered, 3 right answers), yellow (started), or gray (not yet), plus a list of what she has started but not mastered. Solana's view does not show it. It counts right answers from Pop it, Match it, and Count it, and it is saved on this device (and in the backup).
-- **Practice what she is missing:** each section on the progress card has a 🎯 Practice button, and the Games screen has a Practice switch (🎲 Everything or 🎯 What I am missing). In practice mode, Pop it, Match it, and Count it aim at pieces with fewer than 3 right answers (the balloons still include other pieces as choices). If everything in a section is mastered, it plays with everything.
+- **Game settings (parent view only):** turn sections on or off, choose the language, the number range (1 to 5 or 1 to 10), Build a word difficulty, Practice, and spoken instructions. They are saved on this device and travel to Solana's device in the voice pack.
+- **Her progress (parent view only):** at the bottom of Game settings, every letter, number, color, shape, and unit word shows green (mastered, 3 right answers), yellow (started), or gray (not yet), plus a list of what she has started but not mastered. Solana's view does not show it. It counts right answers from Pop it, Match it, and Count it, and it is saved on this device (and in the backup).
+- **Practice what she is missing:** a Practice setting in Game settings (🎲 Everything or 🎯 What she is missing). In practice mode, Pop it, Match it, and Count it aim at pieces with fewer than 3 right answers (the balloons still include other pieces as choices). If everything in a section is mastered, it plays with everything.
 - **Language:** Letters are English. Numbers, colors, and shapes are English, or Spanish when her focus language is Spanish. Unit words use English or her focus language.
 - **Letter cards:** tap any letter to see it, hear it, and (in the parent view) record the letter sound in your voice. Phones read single letters aloud as names, so your recorded sound teaches the sound best.
-- **Spoken instructions:** each game explains how to play out loud the first time it starts, and the **How to play** button repeats it any time. There is an on/off switch on the Games screen. Spanish instructions play only when she is practicing Spanish.
+- **Spoken instructions:** each game explains how to play out loud the first time it starts, and the ❓ button repeats it any time. The on/off switch is in Game settings. Spanish instructions play only when she is practicing Spanish.
 - **Please check:** the Spanish number, color, and shape words and the Spanish chant lines are standard, but ask a Spanish speaker to listen once.
 
-## Voice pack (recordings between devices)
+## Voice pack (recordings and game settings between devices)
 
-Recordings are saved on the device where you make them. To move them to Solana's device: Settings, **Make voice pack**, then **Share** (AirDrop or Messages) to her device. On her device, open the parent view, go to Settings, and tap **Import**. Importing adds clips and replaces any clip with the same name. The file never leaves your own devices.
+Your voice recordings and your Game settings are saved on the device where you make them. The voice pack is one file that carries both to Solana's device. On your device: Settings, **Make voice pack**, then **Share** (AirDrop or Messages) to her device. On her device: switch to the grown-up view (PIN if you set one), go to Settings, tap **Import**, and pick the file. Importing adds clips, replaces any clip with the same name, and replaces the game settings. The file never leaves your own devices.
 
 ## Character voices and Mom's voice
 

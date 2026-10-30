@@ -74,3 +74,28 @@
 .pbadge { display: inline-block; padding: 3px 9px; border-radius: 999px; border: 2px solid var(--ink); background: #e8e8f0; color: var(--ink); font-weight: 700; font-size: 14px; }
 .pbadge.s { background: #ffe58a; }
 .pbadge.m { background: #b9f2c4; }
+
+/* clean layout: top bar, dots, icon buttons, settings rows */
+.gbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 10px; }
+.gtitle { font-weight: 800; font-size: 20px; }
+.iconbtn { width: 48px; height: 48px; flex: none; border-radius: 50%; border: 3px solid var(--ink); background: #fff; color: var(--ink); font-size: 22px; line-height: 1; cursor: pointer; box-shadow: 2px 2px 0 var(--ink); display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.iconbtn:active { transform: translate(2px, 2px); box-shadow: none; }
+.dots { display: inline-flex; gap: 8px; }
+.dots i { width: 16px; height: 16px; border-radius: 50%; border: 3px solid var(--ink); background: #fff; display: block; }
+.dots i.on { background: #ffd23f; }
+.gcard { display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 10px; padding-bottom: 12px; }
+.gcard .gprompt { margin: 2px 0; }
+.gcard .big-em { margin: 0; }
+.gtop { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 14px; }
+.rbcol { text-align: center; flex: 1; }
+.rb.sm { width: 132px; height: 68px; margin: 0 auto 2px; }
+.rb.sm i { border-width: 7px; }
+.gbtns.secs { margin-top: 6px; }
+.gbtns.n4 .gbig:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.gbig.wide { width: 100%; min-height: 76px; flex-direction: row; gap: 12px; font-size: 18px; margin: 4px 0 10px; background: #fff; }
+.gbig.wide span { font-size: 30px; }
+.srow { padding: 10px 0; border-top: 2px dashed rgba(120, 120, 150, .3); }
+.srow:first-of-type { border-top: 0; }
+.slabel { font-weight: 800; margin-bottom: 4px; }
+.pvbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #fff3c4; border: 2px dashed var(--ink); border-radius: 14px; padding: 6px 10px; margin: 0 0 10px; font-size: 14px; font-weight: 700; }
+.srow .chips, .card > .chips { flex-wrap: wrap; overflow: visible; }

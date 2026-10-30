@@ -227,7 +227,7 @@
   async function buildPack() {
     const keys = await recKeys(); const clips = {};
     for (const k of keys) { const blob = await recGet(k); if (blob) clips[k] = await blobToDataUrl(blob); }
-    const json = JSON.stringify({ app: 'solos-academy', kind: 'voicepack', v: 1, made: dkey(), clips });
+    const json = JSON.stringify({ app: 'solos-academy', kind: 'voicepack', v: 2, made: dkey(), clips, settings: { gameCfg: state.gameCfg || null, gameHelp: state.gameHelp !== false } });
     return { file: new File([json], 'solos-voice-pack-' + dkey() + '.json', { type: 'application/json' }), n: Object.keys(clips).length };
   }
   async function importPack(file) {
@@ -240,7 +240,17 @@
         if (typeof u !== 'string' || u.indexOf('data:audio/') !== 0 || k.length > 200) continue;
         const blob = await (await fetch(u)).blob(); await recPut(k, blob); recSet.add(k); n++;
       }
-      toast(n ? 'Imported ' + n + (n === 1 ? ' recording' : ' recordings') : 'No recordings found in that file.'); render(true);
+      let sets = false;
+      if (o.settings && typeof o.settings === 'object') {
+        const gc = o.settings.gameCfg;
+        if (gc && typeof gc === 'object') {
+          const secs = {}; ['letters', 'numbers', 'colors', 'shapes', 'words'].forEach((k) => { secs[k] = !(gc.secs && gc.secs[k] === false); });
+          state.gameCfg = { secs, lang: gc.lang === 'tl' ? 'tl' : 'en', range: gc.range === '10' ? '10' : '5', easy: gc.easy !== false, practice: !!gc.practice }; sets = true;
+        }
+        if (typeof o.settings.gameHelp === 'boolean') { state.gameHelp = o.settings.gameHelp; sets = true; }
+        if (sets) { save(); ui.games = null; }
+      }
+      toast((n ? 'Imported ' + n + (n === 1 ? ' recording' : ' recordings') : 'No recordings in that file') + (sets ? ' and the game settings.' : '.')); render(true);
     } catch (er) { toast('That file does not look like a Solo’s Academy voice pack.'); }
   }
 
@@ -289,7 +299,7 @@
     const sc = $('#starCount'); if (sc) sc.textContent = starTotal();
     const sub = $('#subtitle');
     if (sub) {
-      const seg = { today: 'Today’s flight plan', words: 'Word time!', play: 'Play time!', games: 'Game time!', feel: 'Feelings time', theme: 'Pick our show!', grow: 'Grow', act: 'Activities', settings: 'Settings' }[route()];
+      const seg = { today: 'Today’s flight plan', words: 'Word time!', play: 'Play time!', games: 'Game setup', feel: 'Feelings time', theme: 'Pick our show!', grow: 'Grow', act: 'Activities', settings: 'Settings' }[route()];
       const kidSeg = { play: 'Play time!', games: 'Game time!', words: 'Word time!', feel: 'How do you feel?', stars: 'My stickers!' }[route()];
       if (isChild()) sub.textContent = 'Hi ' + (state.nick || 'friend') + '! ' + (kidSeg || '');
       else sub.textContent = state.look !== 'classic' ? seg : (state.nick ? state.nick + '’s flight plan' : 'Learn, talk, and grow');
@@ -735,9 +745,9 @@
       '<p style="margin-bottom:0"><button class="btn" data-act="role-toggle">Switch to ' + esc(state.nick || 'child') + '’s view</button></p></div>';
     h += '<div class="card"><b>Look</b><label class="f">Style</label>' + sel('look', [['retro', 'Retro preschool TV everywhere (default)'], ['mixed', 'Retro for kid screens only'], ['classic', 'Classic calm look']]) +
       '<p class="small muted">Kid screens are Words and Play. Parent screens keep the calm look in the middle option.</p></div>';
-    h += '<div class="card"><b>Voice pack (recordings for another device)</b><p class="small muted">Record on your phone, then move your voice clips to Solana’s device. 1. Make the file here. 2. Share it (AirDrop or Messages) to her device. 3. On her device, open Settings and tap Import. This device has ' + recSet.size + (recSet.size === 1 ? ' recording' : ' recordings') + '. The file stays between your own devices.</p>' +
+    h += '<div class="card"><b>Voice pack (send recordings and game settings to another device)</b><p class="small muted">Your voice clips and Game setup choices live on this device only. To put them on Solana’s device: 1. Tap Make voice pack here. 2. Tap Share and send it to her device (AirDrop or Messages). 3. On her device, switch to the grown-up view, open Settings, tap Import, and pick the file. This device has ' + recSet.size + (recSet.size === 1 ? ' recording' : ' recordings') + '. The file stays between your own devices.</p>' +
       '<div class="row"><button class="btn alt" data-act="pack-make">' + (ui.pack ? 'Make it again' : 'Make voice pack') + '</button><label class="btn alt" style="display:inline-flex;align-items:center;cursor:pointer">Import<input id="packFile" type="file" accept="application/json,.json" hidden></label></div>' +
-      (ui.pack ? '<p class="small">' + (ui.pack.n ? 'Ready: ' + ui.pack.n + (ui.pack.n === 1 ? ' recording.' : ' recordings.') : 'No recordings on this device yet.') + '</p>' + (ui.pack.n ? '<div class="row"><button class="btn sun" data-act="pack-share">📤 Share</button><button class="btn alt" data-act="pack-save">⬇ Save file</button></div>' : '') : '') + '</div>';
+      (ui.pack ? '<p class="small">' + 'Ready: ' + ui.pack.n + (ui.pack.n === 1 ? ' recording' : ' recordings') + ' and your game settings.' + '</p>' + '<div class="row"><button class="btn sun" data-act="pack-share">📤 Share</button><button class="btn alt" data-act="pack-save">⬇ Save file</button></div>' : '') + '</div>';
     h += '<div class="card"><b>Backup</b><p class="small muted">Saves progress, settings, and activities as a file. Recordings are stored in this browser and are not in the backup.</p>' +
       '<div class="row"><button class="btn alt" data-act="backup">Download backup</button><label class="btn alt" style="display:inline-flex;align-items:center;cursor:pointer">Restore<input id="restoreFile" type="file" accept="application/json" hidden></label></div>' +
       '<p><button class="btn coral small" data-act="reset">Erase everything on this device</button></p></div>';
@@ -882,7 +892,7 @@
         const url = URL.createObjectURL(blob); const link = document.createElement('a');
         link.href = url; link.download = 'solos-academy-backup-' + dkey() + '.json'; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000); break;
       }
-      case 'pack-make': buildPack().then((p) => { ui.pack = p; render(true); if (!p.n) toast('No recordings yet. Record some on a Words card first.'); }).catch(() => toast('Could not make the voice pack.')); break;
+      case 'pack-make': buildPack().then((p) => { ui.pack = p; render(true);  }).catch(() => toast('Could not make the voice pack.')); break;
       case 'pack-share': {
         const f = ui.pack && ui.pack.file; if (!f) break;
         if (navigator.canShare && navigator.canShare({ files: [f] })) navigator.share({ files: [f], title: 'Solo’s Academy voice pack' }).catch(() => {});
