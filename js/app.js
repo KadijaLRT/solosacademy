@@ -19,8 +19,8 @@
   const WBY = {}; S.words.forEach((w) => { WBY[w.id] = w; });
   const CATBY = {}; S.categories.forEach((c) => { CATBY[c.id] = c; });
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-  const KID_TABS = [['games', '🎈', 'Games'], ['play', '🎬', 'Play'], ['words', '🗣️', 'Words'], ['feel', '💛', 'Feelings']];
-  const PARENT_TABS = [['today', '🏠', 'Today'], ['words', '🗣️', 'Words'], ['play', '🎬', 'Play'], ['games', '🎈', 'Games'], ['feel', '💛', 'Feelings'], ['theme', '🌳', 'Theme'], ['grow', '🚀', 'Grow'], ['act', '🎭', 'Activities']];
+  const KID_TABS = [['games', '🎈', 'Games'], ['learn', '📚', 'Learn'], ['feel', '💛', 'Feelings']];
+  const PARENT_TABS = [['today', '🏠', 'Today'], ['learn', '📚', 'Learn'], ['games', '🎈', 'Games'], ['theme', '🏫', 'School'], ['grow', '🚀', 'Grow'], ['act', '🎭', 'Activities']];
 
   /* ---------- state ---------- */
   function defaults() {
@@ -305,7 +305,7 @@
     const sub = $('#subtitle');
     if (sub) {
       const seg = { today: 'Today’s flight plan', words: 'Word time!', play: 'Play time!', games: 'Game setup', feel: 'Feelings time', theme: 'Pick our show!', grow: 'Grow', act: 'Activities', settings: 'Settings' }[route()];
-      const kidSeg = { play: 'Play time!', games: 'Game time!', words: 'Word time!', feel: 'How do you feel?' }[route()];
+      const kidSeg = { learn: 'Learn time!', games: 'Game time!', feel: 'How do you feel?' }[route()];
       if (isChild()) sub.textContent = 'Hi ' + (state.nick || 'friend') + '! ' + (kidSeg || '');
       else sub.textContent = 'Hi ' + (state.parentName || 'there') + '! ' + (seg || '');
     }
@@ -437,8 +437,9 @@
       '<p style="margin:10px 0 2px"><b>' + esc(info.week.title) + '</b><br><span class="muted">' + esc(info.week.focus) + '</span></p>' +
       '<div class="runway"><div class="line"></div><div class="plane" style="left:' + (total ? (8 + (doneN / total) * 84) : 8) + '%">✈️</div></div>' +
       '<div class="row between small"><span>' + doneN + ' of ' + total + ' stops done &middot; about ' + mins + ' min</span><span>' + weeklyActiveDays() + ' of 7 days active</span></div></div>';
-    if (state.unit && !S.themes.some((t) => t.id === state.unit)) { const un = S.units.find((x) => x.id === state.unit); if (un) h += '<div class="card note">Today’s show is <b>' + un.emoji + ' ' + esc(un.name) + '</b>. The Play tab and Games use its words.' + (un.school ? ' This daily plan still follows Trees until a plan for ' + esc(un.name) + ' is added.' : ' It is an open topic, so there is no school plan. The daily plan below still follows Trees as her school support.') + '</div>'; }
-    if (info.over) h += '<div class="card note">The 6 ' + esc(info.th.name.toLowerCase()) + ' weeks are complete. You can repeat week 6, or ask her teacher for the next theme. See the Theme tab.</div>';
+    h += '<div class="card"><div class="row between"><b>🏫 This week at school</b><button class="btn alt small" data-act="go" data-to="theme">School tab</button></div><div class="chips" style="margin-top:8px">' + (info.week.words || []).slice(0, 8).map((w) => '<span class="pill">' + esc(w) + '</span>').join('') + '</div></div>';
+    if (state.unit && !S.themes.some((t) => t.id === state.unit)) { const un = S.units.find((x) => x.id === state.unit); if (un) h += '<div class="card note">Today’s show is <b>' + un.emoji + ' ' + esc(un.name) + '</b>. Learn and Games use its words.' + (un.school ? ' This daily plan still follows Trees until a plan for ' + esc(un.name) + ' is added.' : ' It is an open topic, so there is no school plan. The daily plan below still follows Trees as her school support.') + '</div>'; }
+    if (info.over) h += '<div class="card note">The 6 ' + esc(info.th.name.toLowerCase()) + ' weeks are complete. You can repeat week 6, or ask her teacher for the next theme. See the School tab.</div>';
     if (info.pre) h += '<div class="card note">Your theme starts on ' + esc(startFor(info.th.id)) + '. This is a preview of week 1.</div>';
     const nextId = ids.find((b) => !today[b]);
     if (nextId) h += '<div class="card good nextstop"><b>👉 Next stop</b><div>' + BLOCKS[nextId].e + ' ' + BLOCKS[nextId].t + ' · ' + BLOCKS[nextId].m + ' min</div></div>';
@@ -482,6 +483,12 @@
         '<span class="em">' + w.e + '</span><span class="w' + rtl + '">' + esc(x[0]) + '</span><span class="p">' + esc(x[1]) + '</span><span class="en">' + esc(w.en) + '</span></button>';
     }).join('') + '</div>';
     return h;
+  }
+  /* Parent Learn tab: topic play (cards, sing, story) and the word bank in one place. */
+  function viewLearn() {
+    const mode = ui.learnMode || 'play';
+    const chips = '<div class="chips">' + [['play', '🎬 Topic play'], ['bank', '🗣️ Word bank']].map((t) => '<button class="chip" aria-pressed="' + (mode === t[0]) + '" data-act="learn-mode" data-m="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>';
+    return chips + (mode === 'bank' ? viewWords() : S.fun.viewPlay(ctx));
   }
   function viewEnglish() {
     let h = '<p class="muted">Clear talking and a growing vocabulary. Tap a word to see how to say it, then build it into a sentence.</p>';
@@ -617,7 +624,7 @@
 
   /* ---------- THEME ---------- */
   function viewTheme() {
-    const chips = '<h2>Pick our show</h2>' + S.fun.unitChips(ctx);
+    const chips = '<h2>School</h2>' + S.fun.unitChips(ctx);
     if (!S.themes.some((t) => t.id === state.unit)) return chips + S.fun.unitPage(ctx);
     return chips + viewPlan();
   }
@@ -649,10 +656,24 @@
   }
 
   /* ---------- GROW ---------- */
+  /* What Solana tapped on her Feelings screen, by day. */
+  function growFeelings() {
+    const log = state.feelLog || {}; const rows = []; const counts = {};
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i); const f = S.feelings.find((x) => x.id === log[dkey(d)]);
+      if (f) counts[f.id] = (counts[f.id] || 0) + 1;
+      rows.push('<div class="center" style="min-width:48px"><div style="font-size:30px">' + (f ? f.e : '·') + '</div><div class="small muted">' + d.toLocaleDateString(undefined, { weekday: 'short' }).slice(0, 2) + ' ' + d.getDate() + '</div></div>');
+    }
+    const top = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+    const tally = top.length ? '<div class="stats">' + top.map((id) => { const f = S.feelings.find((x) => x.id === id); return '<span>' + f.e + ' ' + counts[id] + '</span>'; }).join('') + '</div>' : '<p>No feelings logged yet. Solana can tap a face on her Feelings screen.</p>';
+    return '<div class="card"><b>Last 14 days</b><div class="row" style="flex-wrap:wrap;gap:6px;margin-top:8px">' + rows.reverse().join('') + '</div>' + tally + '</div>' +
+      '<button class="btn alt small" data-act="go" data-to="feel">Open feelings toolkit</button>';
+  }
   function viewGrow() {
-    let h = '<h2>Grow</h2><div class="chips">' + [['miles', '✅ Milestones'], ['guide', '🌱 Parent guide'], ['log', '📈 Daily log'], ['map', '🗺️ Growth map to 10']].map((t) =>
+    let h = '<h2>Grow</h2><div class="chips">' + [['miles', '✅ Milestones'], ['feels', '💛 Feelings'], ['guide', '🌱 Parent guide'], ['log', '📈 Daily log'], ['map', '🗺️ Growth map to 10']].map((t) =>
       '<button class="chip" aria-pressed="' + (ui.gtab === t[0]) + '" data-act="gtab" data-t="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>';
     if (ui.gtab === 'miles') return h + growMilestones();
+    if (ui.gtab === 'feels') return h + growFeelings();
     if (ui.gtab === 'guide') return h + S.parent.viewGuide(ctx);
     if (ui.gtab === 'log') return h + S.fun.viewLog(ctx);
     if (ui.gtab === 'map') return h + growMap();
@@ -749,7 +770,7 @@
       '<label class="f">Voice speed</label>' + sel('rate', [[0.6, 'Slow'], [0.8, 'Gentle (default)'], [1, 'Normal']]) +
       '<p><button class="btn alt small" data-act="test-voice">🔊 Test voice</button></p></div>';
     hs += '<div class="card"><b>🌳 Class unit</b><label class="f" for="s-theme">' + esc(planTheme().name) + ' start date</label><input type="date" id="s-theme" data-set="themeStart" value="' + esc(startFor(planTheme().id)) + '">' +
-      '<p class="small muted">Change the unit itself in the Theme tab.</p></div>';
+      '<p class="small muted">Change the unit itself in the School tab.</p></div>';
     hs += '<div class="card"><b>🎈 Games and levels</b><p class="small muted">What she plays, her start level, and practice live in Game settings.</p><p style="margin-bottom:0"><button class="btn" data-act="go" data-to="games">Open Game settings</button></p></div>';
     hs += '<div class="card"><b>🎨 How her screens look</b><label class="f">Style</label>' + sel('look', [['retro', 'Retro preschool TV everywhere (default)'], ['mixed', 'Retro for kid screens only'], ['classic', 'Classic calm look']]) +
       '<p class="small muted">Kid screens are Games, Play, Words, Feelings, and Stickers. Parent screens keep the calm look in the middle option.</p></div>';
@@ -795,15 +816,16 @@
     save: () => save(),
     render: (k) => render(k)
   };
-  const ROUTES = { today: viewToday, words: () => (isChild() ? S.kid.view(ctx, 'words') : viewWords()), play: () => (isChild() ? S.kid.view(ctx, 'play') : S.fun.viewPlay(ctx)), games: () => S.games.view(ctx), feel: () => (isChild() ? S.kid.view(ctx, 'feel') : viewFeel()), theme: viewTheme, grow: viewGrow, act: viewAct, settings: viewSettings };
-  const KID_ROUTES = ['words', 'play', 'games'];
+  const ROUTES = { today: viewToday, learn: () => (isChild() ? S.kid.view(ctx, 'learn') : viewLearn()), games: () => S.games.view(ctx), feel: () => (isChild() ? S.kid.view(ctx, 'feel') : viewFeel()), theme: viewTheme, grow: viewGrow, act: viewAct, settings: viewSettings };
+  const KID_ROUTES = ['learn', 'games'];
   function applyLook(r) {
     const un = S.units.find((x) => x.id === state.unit) || S.units[0];
     document.body.className = 'look-' + (state.look || 'retro') + ((isChild() || KID_ROUTES.indexOf(r) >= 0) ? ' kid' : '');
     document.body.style.setProperty('--u1', un.c1); document.body.style.setProperty('--u2', un.c2);
   }
   function route() {
-    const r = (location.hash || '').replace('#/', '');
+    let r = (location.hash || '').replace('#/', '');
+    if (r === 'words' || r === 'play') { ui.learnMode = r === 'words' ? 'bank' : 'play'; r = 'learn'; try { history.replaceState(null, '', '#/learn'); } catch (e) { /* ignore */ } }
     if (isChild()) return KID_TABS.some((t) => t[0] === r) ? r : 'games';
     return ROUTES[r] ? r : 'today';
   }
@@ -845,6 +867,7 @@
     const el = e.target.closest('[data-act]'); if (!el) return;
     const a = el.dataset.act; const d = el.dataset;
     switch (a) {
+      case 'learn-mode': ui.learnMode = d.m; render(false); break;
       case 'go': closeModal(); if (isChild()) { ui.kid = {}; if (S.kid) S.kid.stop(); } go(d.to); break;
       case 'sset': ui.sset = d.t; render(false); break;
       case 'info': { const n = el.nextElementSibling; if (n) n.classList.toggle('lite-show'); break; }
@@ -880,7 +903,7 @@
       case 'rec-stop': if (recorder && recorder.state !== 'inactive') recorder.stop(); setRecUi(false); break;
       case 'rec-play': playRecording(d.key); break;
       case 'rec-del': recDel(d.key).then(() => { recSet.delete(d.key); toast('Recording deleted'); refreshCard(); }).catch(() => toast('Could not delete')); break;
-      case 'wlang': ui.wlang = d.lang; ui.wcat = 'all'; if (route() === 'words') render(false); else go('words'); break;
+      case 'wlang': ui.wlang = d.lang; ui.wcat = 'all'; ui.learnMode = 'bank'; if (route() === 'learn') render(false); else go('learn'); break;
       case 'wcat': ui.wcat = d.cat; render(true); break;
       case 'songs': {
         const L = LBY[ui.wlang];

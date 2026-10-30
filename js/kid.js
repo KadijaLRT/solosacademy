@@ -68,37 +68,37 @@
   function open(ctx, tab, scr) { const t = T(ctx, tab); t.stack.push(scr); ctx.render(false); }
 
   /* ---------- PLAY ---------- */
-  K.v_play_hub = function (ctx) {
-    return grid(tile('kopen', 'data-t="play" data-s="topics"', '🃏', 'Word cards') + tile('kopen', 'data-t="play" data-s="songs"', '🎵', 'Sing') + tile('kopen', 'data-t="play" data-s="story"', '🕷️', 'Story'));
+  K.v_learn_hub = function (ctx) {
+    return grid(tile('kopen', 'data-t="learn" data-s="topics"', '🃏', 'Word cards') + tile('kopen', 'data-t="learn" data-s="songs"', '🎵', 'Sing') + tile('kopen', 'data-t="learn" data-s="story"', '🕷️', 'Story') + tile('kopen', 'data-t="learn" data-s="langs"', '🗣️', 'Words'));
   };
-  K.v_play_topics = function (ctx) { return bar(true) + grid(topicTiles(ctx)); };
-  K.v_play_cards = function (ctx, t) {
+  K.v_learn_topics = function (ctx) { return bar(true) + grid(topicTiles(ctx)); };
+  K.v_learn_cards = function (ctx, t) {
     const u = F().unitOf(ctx); const list = F().wordsOf(ctx, u); t.i = ((t.i % list.length) + list.length) % list.length; const w = list[t.i]; const tl = F().tlFor(ctx, w);
     return bar(true) + '<div class="card center gcard"><div class="big-em" style="font-size:96px">' + w.emoji + '</div><div class="big-word">' + ctx.esc(w.en) + '</div>' +
       '<div class="row" style="justify-content:center;margin-top:8px"><button class="btn iconbtn big" data-act="ksay" data-k="en" aria-label="English">🇺🇸</button><button class="btn coral iconbtn big" data-act="ksay" data-k="tl" aria-label="' + ctx.esc(tl.name) + '">' + tl.flag + '</button></div>' +
       '<div class="row between" style="margin-top:14px"><button class="btn alt iconbtn big" data-act="knav" data-d="-1" aria-label="Previous">◀</button><button class="btn sun iconbtn big" data-act="knav" data-d="1" aria-label="Next">▶</button></div></div>';
   };
-  K.v_play_songs = function (ctx) {
+  K.v_learn_songs = function (ctx) {
     return bar(true) + grid(SA.songDrills.map((d, i) => tile('kdrill', 'data-i="' + i + '"', d.emoji, ctx.esc(d.movie))).join(''));
   };
-  K.v_play_song = function (ctx, t) {
+  K.v_learn_song = function (ctx, t) {
     const dr = SA.songDrills[t.drill]; const s = dr.steps[t.step];
     return bar(true) + '<div class="card center gcard"><div class="big-em">' + dr.emoji + '</div><div class="big-word" id="kline">' + ctx.esc(s.say) + '</div>' +
       '<div class="row" style="justify-content:center;margin-top:8px"><button class="btn iconbtn big" data-act="ksay" data-k="sing" aria-label="Sing">🎵</button><button class="btn alt iconbtn big" data-act="ksay" data-k="slow" aria-label="Slowly">🐢</button></div>' +
       '<div class="row between" style="margin-top:14px"><button class="btn alt iconbtn big" data-act="kstep" data-d="-1"' + (t.step === 0 ? ' disabled' : '') + ' aria-label="Back">◀</button><button class="btn sun iconbtn big" data-act="kstep" data-d="1"' + (t.step === dr.steps.length - 1 ? ' disabled' : '') + ' aria-label="Next">▶</button></div></div>';
   };
-  K.v_play_story = function (ctx, t) {
+  K.v_learn_story = function (ctx, t) {
     const u = F().unitOf(ctx); const list = F().wordsOf(ctx, u); const w = list[((t.si % list.length) + list.length) % list.length];
     return bar(true) + '<div class="card center gcard"><div class="big-em" style="font-size:96px">' + w.emoji + '</div><div class="big-word" style="font-size:26px">Spidey sees the ' + ctx.esc(w.en) + '.</div>' +
       '<div class="row" style="justify-content:center;margin-top:8px"><button class="btn iconbtn big" data-act="ksay" data-k="story" aria-label="Hear it">🔊</button><button class="btn sun iconbtn big" data-act="kstory" aria-label="Next">▶</button></div></div>';
   };
 
   /* ---------- WORDS ---------- */
-  K.v_words_hub = function (ctx) {
+  K.v_learn_langs = function (ctx) {
     const fl = ctx.LBY[ctx.state.focusLang || 'es'] || ctx.LBY.es;
-    return grid(tile('kwlang', 'data-l="en"', '🇺🇸', 'English') + tile('kwlang', 'data-l="' + fl.id + '"', fl.flag, ctx.esc(fl.name)));
+    return bar(true) + grid(tile('kwlang', 'data-l="en"', '🇺🇸', 'English') + tile('kwlang', 'data-l="' + fl.id + '"', fl.flag, ctx.esc(fl.name)));
   };
-  K.v_words_cats = function (ctx, t) {
+  K.v_learn_cats = function (ctx, t) {
     if (t.lang === 'en') return bar(true) + grid(SA.english.map((c, i) => tile('kwcat', 'data-c="' + i + '"', c.words[0].e, ctx.esc(c.cat))).join(''));
     return bar(true) + grid(SA.categories.filter((c) => SA.words.some((w) => w.c === c.id && w[t.lang])).map((c) => tile('kwcat', 'data-c="' + c.id + '"', c.emoji, ctx.esc(c.name))).join(''));
   };
@@ -107,7 +107,7 @@
     const L = ctx.LBY[t.lang];
     return SA.words.filter((w) => w.c === t.cat && w[t.lang]).map((w) => ({ e: w.e, text: w[t.lang][0], tag: L.tts, rtl: L.dir === 'rtl' }));
   }
-  K.v_words_list = function (ctx, t) {
+  K.v_learn_list = function (ctx, t) {
     t.items = wordItems(ctx, t);
     return bar(true) + grid(t.items.map((x, i) => tile('kword', 'data-i="' + i + '"', x.e, '<span style="font-size:15px;line-height:1.1"' + (x.rtl ? ' dir="rtl"' : '') + '>' + ctx.esc(x.text) + '</span>')).join(''));
   };
@@ -138,18 +138,18 @@
     if (scr === 'story') { const list = F().wordsOf(ctx, u); const w = list[((t.si % list.length) + list.length) % list.length]; return say(ctx, 'Spidey sees the ' + w.en + '.'); }
     if (scr === 'song') return K.sing(ctx, SA.songDrills[t.drill].steps[t.step].say, 'en-US');
     if (scr === 'quiz') return say(ctx, u.feelings[t.fi % u.feelings.length].q);
-    const label = { 'play:hub': 'Pick one', 'play:topics': 'Pick a topic', 'play:songs': 'Pick a song', 'words:hub': 'Pick a language', 'words:cats': 'Pick one', 'words:list': 'Tap a picture', 'feel:hub': 'Pick one', 'feel:faces': 'How do you feel?', 'feel:breath': 'Let us fly and breathe' }[tab + ':' + scr];
+    const label = { 'learn:hub': 'Pick one', 'learn:topics': 'Pick a topic', 'learn:songs': 'Pick a song', 'learn:langs': 'Pick a language', 'learn:cats': 'Pick one', 'learn:list': 'Tap a picture', 'feel:hub': 'Pick one', 'feel:faces': 'How do you feel?', 'feel:breath': 'Let us fly and breathe' }[tab + ':' + scr];
     return label ? say(ctx, label) : false;
   }
   K.enter = function (ctx) { setTimeout(() => speakScreen(ctx), 250); };
 
   K.handle = function (a, d, ctx) {
-    const tab = ctx.ui.kidTab || 'play'; const t = T(ctx, tab); const u = F().unitOf(ctx);
+    const tab = ctx.ui.kidTab || 'learn'; const t = T(ctx, tab); const u = F().unitOf(ctx);
     switch (a) {
       case 'kopen': K.stop(); open(ctx, d.t, d.s); K.enter(ctx); return true;
       case 'kback': K.stop(); t.stack.pop(); ctx.render(false); K.enter(ctx); return true;
       case 'kagain': speakScreen(ctx); return true;
-      case 'ktopic': { F().handle('unit-set', { id: d.id }, ctx); t.i = 0; t.si = 0; t.fi = 0; t.stack.push(tab === 'play' ? (t.stack.indexOf('story') >= 0 ? 'story' : 'cards') : 'cards'); ctx.render(false); say(ctx, F().unitOf(ctx).name); setTimeout(() => speakScreen(ctx), 1200); return true; }
+      case 'ktopic': { F().handle('unit-set', { id: d.id }, ctx); t.i = 0; t.si = 0; t.fi = 0; t.stack.push('cards'); ctx.render(false); say(ctx, F().unitOf(ctx).name); setTimeout(() => speakScreen(ctx), 1200); return true; }
       case 'knav': { const list = F().wordsOf(ctx, u); t.i = (t.i + (+d.d) + list.length) % list.length; ctx.render(false); speakScreen(ctx); return true; }
       case 'ksay': {
         if (d.k === 'tl') { const list = F().wordsOf(ctx, u); const w = list[((t.i % list.length) + list.length) % list.length]; const tl = F().tlFor(ctx, w); const lg = ctx.state.focusLang || 'es'; if (hasMom(ctx, w, lg)) { ctx.rec.play(momKey(ctx, w, lg)); return true; } if (!F().say(ctx, tl.text, tl.tag)) ctx.toast('No ' + tl.name + ' voice on this device.'); return true; }

@@ -319,7 +319,7 @@
       '<details class="acc"><summary>What each level teaches</summary><div class="acc-body">' + LI.map((x) => '<p class="small"><b>' + x.name + '</b> (' + x.like + '): ' + ctx.esc(x.does) + '</p>').join('') + '</div></details></div>';
     h += '<div class="card"><b>What she plays</b><p class="small muted">Solana only sees the sections that are on.</p><div class="chips">' +
       SECS.map((k) => '<button class="chip" aria-pressed="' + on(c.secs[k]) + '" data-act="gtoggle" data-s="' + k + '">' + (c.secs[k] ? '✓ ' : '') + secLabel(k, u) + '</button>').join('') + '</div>' +
-      '<div class="small muted">Unit words follow the show you picked in the Theme tab.</div></div>';
+      '<div class="small muted">Unit words follow the topic picked in the School tab.</div></div>';
     h += '<div class="card"><b>How she plays</b>' +
       grp('Say it in', es ? 'Numbers, colors, shapes, and unit words switch to ' + (sample ? sample.tl.name : 'her second language') + '. Praise is always English.' : 'Unit words can use her second language. Numbers, colors, and shapes use Spanish only when Spanish is her focus language.',
         chips(ctx, [['en', '🇺🇸 English'], ['tl', sample ? sample.tl.flag + ' ' + sample.tl.name : '🌎 Second language']], c.lang, 'glang', 'l')) +

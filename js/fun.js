@@ -76,7 +76,7 @@
     const esc = ctx.esc; const u = unitOf(ctx); const all = wordsOf(ctx, u);
     const weeks = [['All', 'All']].concat(u.weeks.filter((w) => all.some((x) => x.week === w)).map((w) => [w, w]));
     const list = cardList(ctx, p);
-    let h = '<p class="muted small">' + u.emoji + ' Unit: <b>' + esc(u.name) + '</b>' + (ctx.isChild() ? '' : '. Change it in the Theme tab.') + '</p>' + chipRow(ctx, weeks, p.wk, 'pwk', 'w') + voiceRow(ctx);
+    let h = '<p class="muted small">' + u.emoji + ' Unit: <b>' + esc(u.name) + '</b>' + (ctx.isChild() ? '' : '. Change it in the School tab.') + '</p>' + chipRow(ctx, weeks, p.wk, 'pwk', 'w') + voiceRow(ctx);
     if (!list.length) return h + '<div class="card">No words for this week yet.</div>';
     p.i = ((p.i % list.length) + list.length) % list.length;
     const w = list[p.i]; const tl = tlFor(ctx, w); const key = u.id + ':' + w.en; const done = !!ctx.state.fmastered[key];

@@ -136,3 +136,7 @@ The Games home shows Letters, Numbers, Colors, Shapes and every topic side by si
 
 ## Spoken language
 All instructions, hints and praise are in English. Only the practice words and short word sentences use her second language.
+
+## Tabs
+Grown-up view: Today, Learn (topic play and word bank), Games, School (CREC unit), Grow (includes a Feelings log of what Solana taps), Activities.
+Solana's view: Games, Learn, Feelings. Recordings you make in Learn (Mom's voice) play on her word cards.
