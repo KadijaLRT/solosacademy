@@ -223,7 +223,7 @@
     const cur = () => { const l = cardList(ctx, p); return l.length ? l[((p.i % l.length) + l.length) % l.length] : null; };
     if (a !== 'mrec' && ctx.rec.active()) ctx.rec.stop(); /* leaving the card ends a recording */
     switch (a) {
-      case 'pvoice': st.charVoice = d.v; ctx.save(); ctx.render(true); say(ctx, 'Hello friends! Let’s learn!', 'en-US'); return true;
+      case 'pvoice': st.charVoice = d.v; ctx.save(); ctx.render(true); say(ctx, 'Hello ' + (ctx.state.nick || 'friend') + '! Let’s learn!', 'en-US'); return true;
       case 'mplay': ctx.rec.play(d.key); return true;
       case 'mrec': {
         if (ctx.rec.active()) { ctx.rec.stop(); return true; }
@@ -253,7 +253,7 @@
         p.res = ok ? 'Yes! ' + fb.a + ' / ' + fb.es : 'Hmm, try again!'; ctx.render(true); if (ok) say(ctx, fb.a, 'en-US'); return true;
       }
       case 'pfnext': p.fi += 1; p.res = ''; ctx.render(true); return true;
-      case 'unit-set': st.unit = d.id; p.wk = 'All'; p.i = 0; p.si = 0; p.fi = 0; p.show = false; p.ai = ''; ctx.save(); ctx.render(true); ctx.toast('Unit: ' + unitOf(ctx).name); return true;
+      case 'unit-set': ctx.ui.tweek = null; st.unit = d.id; p.wk = 'All'; p.i = 0; p.si = 0; p.fi = 0; p.show = false; p.ai = ''; ctx.save(); ctx.render(true); ctx.toast('Unit: ' + unitOf(ctx).name); return true;
       case 'uspeak': { const u = unitOf(ctx); const w = wordsOf(ctx, u)[+d.i]; if (w) say(ctx, w.en, 'en-US'); return true; }
       case 'cw-add': {
         const en = (document.getElementById('cwen').value || '').trim(); const es = (document.getElementById('cwes').value || '').trim();

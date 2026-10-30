@@ -99,3 +99,21 @@
 .slabel { font-weight: 800; margin-bottom: 4px; }
 .pvbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #fff3c4; border: 2px dashed var(--ink); border-radius: 14px; padding: 6px 10px; margin: 0 0 10px; font-size: 14px; font-weight: 700; }
 .srow .chips, .card > .chips { flex-wrap: wrap; overflow: visible; }
+
+#roleBtn.lockbtn { opacity: .4; }
+
+/* toddler view: pictures and sound first, little text */
+.backbtn { min-width: 56px; min-height: 52px; font-size: 24px; }
+.iconbtn.big { width: 84px; height: 84px; font-size: 40px; }
+.gcard .iconbtn.big { animation: gpulse 2.4s ease-in-out infinite; }
+@keyframes gpulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+.gcard .gprompt { font-size: 18px; font-weight: 700; opacity: .7; }
+.eq { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; font-size: 30px; }
+.eq .grp { font-size: 24px; max-width: 120px; }
+.cue { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.cue-n { font-size: 72px; font-weight: 800; line-height: 1; color: #3a86ff; text-shadow: 3px 3px 0 var(--ink); }
+.cue-e { font-size: 56px; line-height: 1; }
+.slot.big.huge { width: 118px; height: 118px; }
+.slot.big.huge .grp { font-size: 15px; max-width: 108px; }
+.tile.sm.xs { width: 54px; height: 54px; }
+.tile.sm.xs b.em { font-size: 28px; }

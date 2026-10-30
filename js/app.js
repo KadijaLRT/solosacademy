@@ -25,7 +25,7 @@
   /* ---------- state ---------- */
   function defaults() {
     return {
-      v: 1, birth: '', nick: 'Solana', role: 'parent', pinHash: '', pinSalt: '', themeStart: '', mode: 'focus', focusLang: 'es', level: 'standard', rate: 0.8,
+      v: 1, birth: '', nick: 'Solana', parentName: 'Kadija', role: 'parent', pinHash: '', pinSalt: '', themeStart: '', mode: 'focus', focusLang: 'es', level: 'standard', rate: 0.8,
       done: {}, learned: {}, said: {}, feelLog: {}, milestones: {}, activities: null, quizStars: 0, onboarded: false,
       look: 'retro', charVoice: 'hero', gameStars: 0, rbBands: 0, rainbows: 0, letterWins: {}, unit: 'trees', songDays: [], log: [], customWords: {}, fmastered: {}, homeSetup: {}, unitStarts: {}
     };
@@ -38,6 +38,7 @@
     } catch (e) { /* storage may be blocked; app still works for this session */ }
     if (!s.activities) s.activities = JSON.parse(JSON.stringify(S.activityDefaults));
     if (!s.themeStart) s.themeStart = dkey();
+    if (!s.stretchSet) { s.level = 'stretch'; s.stretchSet = true; } /* she is learning ahead of her age: start on the longer daily plan */
     return s;
   }
   let state = load();
@@ -182,6 +183,7 @@
   async function startRecording(key, cb) {
     if (!navigator.mediaDevices || !window.MediaRecorder) { toast('Recording is not supported in this browser.'); return; }
     try {
+      if (recorder) stopRecording(true); /* never leave an earlier microphone stream running */
       recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const type = ['audio/mp4', 'audio/webm', 'audio/ogg'].find((t) => window.MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t));
       recorder = type ? new MediaRecorder(recStream, { mimeType: type }) : new MediaRecorder(recStream);
@@ -275,7 +277,7 @@
   }
   function openPinSet() {
     openModal('<button class="btn alt small close" data-act="modal-close">Cancel</button><h2 style="margin-top:0">' + (state.pinHash ? 'Change PIN' : 'Set a parent PIN') + '</h2>' +
-      '<p class="small muted">4 to 6 digits. It keeps the parent view closed when you switch to ' + esc(state.nick || 'your child') + '’s view. It is a child lock, not strong security.</p>' +
+      '<p class="small muted">' + (ui.afterPin ? 'Pick a PIN first so only you can get back to your view. ' : '') + '4 to 6 digits. It keeps the parent view closed when you switch to ' + esc(state.nick || 'your child') + '’s view. It is a child lock, not strong security.</p>' +
       '<label class="f" for="pinNew">New PIN</label><input type="password" id="pinNew" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off">' +
       '<label class="f" for="pinNew2">Type it again</label><input type="password" id="pinNew2" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off">' +
       '<p><button class="btn" data-act="pin-save">Save PIN</button></p>');
@@ -286,12 +288,13 @@
     if (h === state.pinHash) { state.role = 'parent'; save(); closeModal(); go('today'); render(false); toast('Welcome back'); }
     else { const i = $('#pinIn'); if (i) { i.value = ''; i.classList.add('shake'); setTimeout(() => i.classList.remove('shake'), 400); } toast('That PIN did not match'); }
   }
+  function toChild() { state.role = 'child'; save(); closeModal(); go('games'); render(false); toast('Solana’s view'); }
   async function savePin() {
     const a = ($('#pinNew') || {}).value || ''; const b = ($('#pinNew2') || {}).value || '';
     if (!/^\d{4,6}$/.test(a)) { toast('Use 4 to 6 digits'); return; }
     if (a !== b) { toast('The two PINs do not match'); return; }
     const salt = Math.random().toString(36).slice(2) + Date.now().toString(36);
-    state.pinSalt = salt; state.pinHash = await hashPin(a, salt); save(); closeModal(); render(true); toast('PIN saved');
+    state.pinSalt = salt; state.pinHash = await hashPin(a, salt); save(); closeModal(); if (ui.afterPin) { ui.afterPin = false; toChild(); } else { render(true); toast('PIN saved'); }
   }
 
   /* ---------- header ---------- */
@@ -302,10 +305,10 @@
       const seg = { today: 'Today’s flight plan', words: 'Word time!', play: 'Play time!', games: 'Game setup', feel: 'Feelings time', theme: 'Pick our show!', grow: 'Grow', act: 'Activities', settings: 'Settings' }[route()];
       const kidSeg = { play: 'Play time!', games: 'Game time!', words: 'Word time!', feel: 'How do you feel?', stars: 'My stickers!' }[route()];
       if (isChild()) sub.textContent = 'Hi ' + (state.nick || 'friend') + '! ' + (kidSeg || '');
-      else sub.textContent = state.look !== 'classic' ? seg : (state.nick ? state.nick + '’s flight plan' : 'Learn, talk, and grow');
+      else sub.textContent = 'Hi ' + (state.parentName || 'there') + '! ' + (seg || '');
     }
     const rb = $('#roleBtn'); const sb = $('#settingsBtn'); const st = $('#starBtn');
-    if (rb) { rb.textContent = isChild() ? '👪' : '👧'; rb.setAttribute('aria-label', isChild() ? 'Grown-ups: open the parent view' : 'Switch to ' + (state.nick || 'child') + '’s view'); }
+    if (rb) { rb.classList.toggle('lockbtn', isChild()); rb.textContent = isChild() ? '👪' : '👧'; rb.setAttribute('aria-label', isChild() ? 'Grown-ups: press and hold to open the parent view' : 'Switch to ' + (state.nick || 'child') + '’s view'); }
     if (sb) sb.hidden = isChild();
     if (st) st.dataset.to = isChild() ? 'stars' : 'words';
   }
@@ -327,7 +330,7 @@
   };
   function flatEnglish() { const out = []; S.english.forEach((c) => c.words.forEach((w) => out.push(w))); return out; }
   function findEnglish(word) { const t = String(word).toLowerCase(); return flatEnglish().find((w) => w.w.toLowerCase() === t) || null; }
-  function qLevel() { const a = ageYears(); const i = a == null ? 1 : Math.round((a - 2) * 1.5); return clamp(i, 0, S.questionLadder.length - 1); }
+  function qLevel() { const a = ageYears(); const i = (a == null ? 1 : Math.round((a - 2) * 1.5)) + S.stage.boost(state); return clamp(i, 0, S.questionLadder.length - 1); }
   function sayBtn(text, label) { return '<button class="btn small alt" data-act="say-en" data-text="' + esc(text) + '">🔊 ' + esc(label || 'Hear') + '</button>'; }
   function wordRow(lang, w) {
     const L = LBY[lang]; const x = w[lang]; const rtl = L.dir === 'rtl' ? ' rtl' : '';
@@ -410,6 +413,15 @@
     if (n >= 10) return ['🥉', 'Bronze'];
     return ['✈️', 'Boarding'];
   }
+  function progressLine() {
+    const learned = Object.keys(state.learned).filter((k) => state.learned[k]).length + Object.keys(state.fmastered || {}).filter((k) => state.fmastered[k]).length;
+    const mastered = Object.keys(state.letterWins || {}).filter((k) => state.letterWins[k] >= 3).length + Object.keys(state.gameWins || {}).filter((k) => state.gameWins[k] >= 3).length;
+    return '⭐ ' + starTotal() + ' stars · 📚 ' + learned + ' words learned · 🔤 ' + mastered + ' game pieces mastered · 🌈 ' + (state.rainbows || 0) + ' rainbows';
+  }
+  function stageCard() {
+    const lv = S.stage.level(state); const L = S.stage.LEVELS[lv]; const age = S.stage.ageText(state);
+    return '<div class="card note"><b>Hello ' + esc(state.parentName || 'there') + ', here’s ' + esc(state.nick || 'her') + '’s progress</b><p class="small" style="margin:6px 0">' + progressLine() + '</p><b>🚀 Her stage</b><p class="small" style="margin:6px 0 0">' + (age ? esc(age) + ' old. ' : 'Add her birth month in Settings. ') + 'Teaching at <b>' + L.name + '</b> (' + L.like + '), ahead of her age on purpose. Change it in the Games tab, Her level.</p></div>';
+  }
   function viewToday() {
     const info = themeInfo(); const ids = LEVELS[state.level] || LEVELS.standard;
     const today = state.done[dkey()] || {};
@@ -417,7 +429,7 @@
     const mins = ids.reduce((a, b) => a + BLOCKS[b].m, 0);
     const hr = new Date().getHours(); const greet = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
     const dateStr = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-    let h = '<div class="card hero"><div class="row between"><div><b style="font-size:22px">' + greet + (state.nick ? ', ' + esc(state.nick) : '') + '!</b><div class="muted">' + esc(dateStr) + '</div></div>' +
+    let h = '<div class="card hero"><div class="row between"><div><b style="font-size:22px">' + greet + (state.parentName ? ', ' + esc(state.parentName) : '') + '!</b><div class="muted">' + esc(dateStr) + '</div></div>' +
       '<span class="pill green">' + info.th.emoji + ' Week ' + (info.n + 1) + ' of ' + info.th.weeks.length + (info.over ? ' (done!)' : '') + '</span></div>' +
       '<p style="margin:10px 0 2px"><b>' + esc(info.week.title) + '</b><br><span class="muted">' + esc(info.week.focus) + '</span></p>' +
       '<div class="runway"><div class="line"></div><div class="plane" style="left:' + (total ? (8 + (doneN / total) * 84) : 8) + '%">✈️</div></div>' +
@@ -425,6 +437,7 @@
     if (state.unit && !S.themes.some((t) => t.id === state.unit)) { const un = S.units.find((x) => x.id === state.unit); if (un) h += '<div class="card note">Today’s show is <b>' + un.emoji + ' ' + esc(un.name) + '</b>. The Play tab uses its words. This daily plan still follows Trees until a plan for ' + esc(un.name) + ' is added.</div>'; }
     if (info.over) h += '<div class="card note">The 6 ' + esc(info.th.name.toLowerCase()) + ' weeks are complete. You can repeat week 6, or ask her teacher for the next theme. See the Theme tab.</div>';
     if (info.pre) h += '<div class="card note">Your theme starts on ' + esc(startFor(info.th.id)) + '. This is a preview of week 1.</div>';
+    h += stageCard();
     h += S.parent.moveCard(ctx, info.diff);
     ids.forEach((b) => {
       const m = BLOCKS[b]; const isDone = !!today[b]; const id = 'blk-' + b;
@@ -729,7 +742,7 @@
     const standalone = window.navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
     let h = '<h2>Settings</h2>';
     h += '<div class="card"><b>About your child</b><p class="small muted">Stays on this device only. Used to show the right age stage.</p>' +
-      '<label class="f" for="s-nick">Nickname (optional)</label><input type="text" id="s-nick" data-set="nick" value="' + esc(state.nick) + '" maxlength="30" autocomplete="off">' +
+      '<label class="f" for="s-me">Your name (shown on your screen)</label><input type="text" id="s-me" data-set="parentName" value="' + esc(state.parentName) + '" maxlength="30" autocomplete="off"><label class="f" for="s-nick">Her nickname (optional)</label><input type="text" id="s-nick" data-set="nick" value="' + esc(state.nick) + '" maxlength="30" autocomplete="off">' +
       '<label class="f" for="s-birth">Birth month and year</label><input type="month" id="s-birth" data-set="birth" value="' + esc(state.birth) + '"></div>';
     h += '<div class="card"><b>Learning plan</b>' +
       '<label class="f">Daily time</label>' + sel('level', [['light', 'Light, about 17 min'], ['standard', 'Standard, about 22 min'], ['stretch', 'Stretch, about 32 min']]) +
@@ -757,7 +770,7 @@
     return h;
   }
   function openOnboarding() {
-    openModal('<div class="center"><div class="big-em">✈️</div><h2 style="margin-top:0">Welcome aboard</h2></div><p>Two optional details help the app show the right stage. They stay on this device only. Later, set a parent PIN in Settings, then use the 👧 button to hand the device to ' + 'your child.</p>' +
+    openModal('<div class="center"><div class="big-em">✈️</div><h2 style="margin-top:0">Welcome aboard</h2></div><p>Two optional details help the app show the right stage. They stay on this device only. The first time you tap the 👧 button to hand the device to ' + 'your child, the app asks you to set a PIN.</p>' +
       '<label class="f" for="o-nick">Nickname (optional)</label><input type="text" id="o-nick" maxlength="30" autocomplete="off">' +
       '<label class="f" for="o-birth">Birth month and year</label><input type="month" id="o-birth">' +
       '<div class="row" style="margin-top:14px"><button class="btn" data-act="onboard-save">Start</button><button class="btn alt" data-act="onboard-skip">Skip for now</button></div>');
@@ -819,7 +832,7 @@
     const a = el.dataset.act; const d = el.dataset;
     switch (a) {
       case 'go': closeModal(); go(d.to); break;
-      case 'modal-close': closeModal(); break;
+      case 'modal-close': ui.afterPin = false; closeModal(); break;
       case 'toggle-block': {
         e.preventDefault(); e.stopPropagation();
         const k = dkey(); state.done[k] = state.done[k] || {}; state.done[k][d.b] = !state.done[k][d.b];
@@ -904,17 +917,18 @@
         const url = URL.createObjectURL(f); const link = document.createElement('a'); link.href = url; link.download = f.name; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000); break;
       }
       case 'reset': if (window.confirm('Erase all progress and settings on this device? This cannot be undone.')) { try { localStorage.removeItem(KEY); } catch (er) { /* ignore */ } state = load(); state.onboarded = true; save(); render(false); toast('Erased'); } break;
-      case 'onboard-save': state.nick = ($('#o-nick').value || '').trim(); state.birth = $('#o-birth').value || ''; state.onboarded = true; save(); closeModal(); render(false); break;
+      case 'onboard-save': { const nk = ($('#o-nick').value || '').trim(); if (nk) state.nick = nk; } state.birth = $('#o-birth').value || ''; state.onboarded = true; save(); closeModal(); render(false); break;
       case 'onboard-skip': state.onboarded = true; save(); closeModal(); break;
       case 'splash-go': hideSplash(); break;
       case 'role-toggle':
-        if (isChild()) { if (state.pinHash) openPinEntry(); else { state.role = 'parent'; save(); go('today'); render(false); } }
-        else { state.role = 'child'; save(); closeModal(); go('games'); render(false); toast('Solana’s view'); }
+        if (isChild()) { if (!state.pinHash) { state.role = 'parent'; save(); go('today'); render(false); } else toast('Grown-ups: press and hold the 👪 button'); }
+        else if (!state.pinHash) { ui.afterPin = true; openPinSet(); }
+        else toChild();
         break;
       case 'pin-submit': submitPin(); break;
       case 'pin-set-open': openPinSet(); break;
       case 'pin-save': savePin(); break;
-      case 'pin-remove': state.pinHash = ''; state.pinSalt = ''; save(); render(true); toast('PIN removed'); break;
+      case 'pin-remove': state.pinHash = ''; state.pinSalt = ''; save(); render(true); toast('PIN removed. You will be asked for a new one next time you switch to her view.'); break;
       default: if (!S.games.handle(a, d, ctx)) S.fun.handle(a, d, ctx); break;
     }
   });
@@ -940,7 +954,7 @@
       fr.onload = () => {
         try {
           const o = JSON.parse(fr.result); if (!o || typeof o !== 'object' || !o.done) throw new Error('bad');
-          state = Object.assign(defaults(), o); save(); render(false); toast('Restored');
+          state = Object.assign(defaults(), o); if (!Array.isArray(state.activities)) state.activities = JSON.parse(JSON.stringify(S.activityDefaults)); ui.games = null; ui.pack = null; save(); render(false); toast('Restored');
         } catch (er) { toast('That file does not look like a Solo’s Academy backup.'); }
       };
       fr.readAsText(el.files[0]);
@@ -952,12 +966,24 @@
   });
 
   /* ---------- start ---------- */
+  /* Spoken hello: Solana hears her own name; the grown-up hears a progress hello. */
+  function greeting() {
+    const kid = state.nick || 'friend';
+    return isChild() ? 'Hello ' + kid + '! Let’s learn!' : 'Hello ' + (state.parentName || 'there') + '! Here’s ' + kid + '’s progress.';
+  }
   function hideSplash() {
     const sp = $('#splash'); if (!sp || sp.hidden) return;
-    sp.hidden = true; speak('Hello friends! Let’s learn!', 'en-US');
+    sp.hidden = true; speak(greeting(), 'en-US');
     if (!state.onboarded && !isChild()) openOnboarding();
   }
   S.fun.mount(); S.games.mount(ctx);
+  /* In Solana's view the grown-up button needs a press and hold, then the PIN. */
+  (function () {
+    const rb = $('#roleBtn'); if (!rb) return; let t = null;
+    const stop = () => { if (t) { clearTimeout(t); t = null; } };
+    rb.addEventListener('pointerdown', () => { if (!isChild() || !state.pinHash) return; stop(); t = setTimeout(() => { t = null; openPinEntry(); }, 1500); });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => rb.addEventListener(ev, stop));
+  })();
   render(false);
   if (state.look !== 'classic') { $('#splash').hidden = false; } else if (!state.onboarded && !isChild()) openOnboarding();
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {

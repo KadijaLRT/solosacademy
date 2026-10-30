@@ -21,4 +21,11 @@
     { w: 'fox', e: '🦊' }, { w: 'owl', e: '🦉' }, { w: 'key', e: '🔑' }, { w: 'egg', e: '🥚' }, { w: 'star', e: '⭐' },
     { w: 'tree', e: '🌳' }, { w: 'moon', e: '🌙' }, { w: 'fish', e: '🐟' }, { w: 'frog', e: '🐸' }, { w: 'bear', e: '🐻' }, { w: 'kite', e: '🪁' }
   ];
+  /* Longer words for higher levels (5 to 6 letters). */
+  SA.spellWords2 = [
+    { w: 'apple', e: '🍎' }, { w: 'plane', e: '✈️' }, { w: 'tiger', e: '🐯' }, { w: 'zebra', e: '🦓' }, { w: 'horse', e: '🐴' },
+    { w: 'robot', e: '🤖' }, { w: 'cloud', e: '☁️' }, { w: 'truck', e: '🚚' }, { w: 'train', e: '🚂' }, { w: 'panda', e: '🐼' },
+    { w: 'pizza', e: '🍕' }, { w: 'lemon', e: '🍋' }, { w: 'snake', e: '🐍' }, { w: 'whale', e: '🐋' }, { w: 'spider', e: '🕷️' },
+    { w: 'rabbit', e: '🐰' }, { w: 'monkey', e: '🐵' }, { w: 'flower', e: '🌸' }, { w: 'rocket', e: '🚀' }
+  ];
 })();

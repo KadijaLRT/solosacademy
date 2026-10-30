@@ -109,3 +109,20 @@ Re-upload the folder. Change `CACHE` in `sw.js` to a new name each time (for exa
 - `js/data-water.js`, `js/data-helpers.js`, `js/data-moving.js`, `js/data-buildings.js`: the 6-week plans for the other four units
 - `api/spidey.js`: optional Groq function for Vercel
 - `manifest.webmanifest`, `sw.js`, `icons/`: install and offline support
+
+
+## Your name and the lock between views
+
+Your screen says "Hi Kadija!" (change it in Settings, Your name). The first time you switch to Solana's view the app makes you set a PIN. In her view the grown-up button is faded and needs a press and hold of about 1.5 seconds, then the PIN. A quick tap does nothing.
+
+## Her level (age and challenge)
+
+The app reads her birth month (Settings) and sets a base stage, then moves her ahead of it. Game settings, "Her level", has three choices: her age, 1 level ahead (default), or 2 levels ahead. Level 0 is about age 2 and level 4 is age 6 and up. Higher levels unlock Sound it (first and last letters of words), Add it (adding, then taking away), numbers to 20, more colors and shapes, longer words to spell, a listening sentence for unit words, and a short Spanish sentence after each right Spanish answer. The Today tab shows her stage and a progress summary, and the question ladder starts higher too. Solana cannot read yet, so every prompt is spoken, with big picture cues and icon buttons.
+
+## Greetings
+
+Solana hears "Hello Solana! Let's learn!" and you hear "Hello Kadija! Here's Solana's progress." Names come from Settings.
+
+## Changing the unit
+
+Theme tab (grown-up view), tap the unit at the top: Trees, Water, Community Helpers, How Things Move, or Buildings. A 📅 means the unit has a full 6-week daily plan. For a new unit, set its start date in Settings (the label shows the unit name) so the weeks line up with her class.
