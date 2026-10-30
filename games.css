@@ -48,7 +48,7 @@
 .gbtns.n4 { grid-template-columns: repeat(2, 1fr); }
 .gbig:nth-child(4n+4) { background: #b9f2c4; }
 .slot { position: relative; }
-.slot.big { width: 112px; height: 112px; }
+.slot.big { width: 104px; height: 104px; }
 .grp { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: 0; font-size: 22px; line-height: 1.15; max-width: 100px; }
 .slot .dg { position: absolute; right: 4px; bottom: 0; font-size: 26px; background: #fff; border: 2px solid var(--ink); border-radius: 10px; padding: 0 7px; line-height: 1.2; }
 .sw { display: block; width: 58px; height: 58px; border-radius: 50%; border: 3px solid var(--ink); box-sizing: border-box; }
@@ -66,3 +66,11 @@
 .cline { font-size: 22px; font-weight: 800; padding: 5px 12px; margin: 4px 0; border-radius: 14px; border: 3px solid transparent; transition: background .15s, transform .15s; }
 .cline b { font-size: 28px; }
 .cline.on { background: #ffe58a; border-color: var(--ink); transform: scale(1.04); }
+
+/* the praise toast sits over the pieces, so it must never block a drag */
+.toast { pointer-events: none; }
+
+.pgrid { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.pbadge { display: inline-block; padding: 3px 9px; border-radius: 999px; border: 2px solid var(--ink); background: #e8e8f0; color: var(--ink); font-weight: 700; font-size: 14px; }
+.pbadge.s { background: #ffe58a; }
+.pbadge.m { background: #b9f2c4; }

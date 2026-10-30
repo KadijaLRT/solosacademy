@@ -45,7 +45,7 @@ This app merges the earlier Sky Academy app with the Little Learners play featur
 
 ## Games tab (for Solana)
 
-The Games tab is the first tab and the opening screen in Solana's view. The games are original and use ideas common to toddler learning apps (short rounds, big pictures, a friendly voice, a progress reward). Nothing is copied from any other app. A wrong try just wobbles and says "Try again", and nothing is lost.
+The Games tab is the first tab and the opening screen in Solana's view. The games are original and use ideas common to toddler learning apps (short rounds, big pictures, a friendly voice, a progress reward). Nothing is copied from any other app. A right answer is praised out loud in English every time ("Green! Great job!"), also in Spanish mode (the Spanish word first, then the English praise). A wrong try wobbles, says what she picked ("That is blue. Try again!"), and nothing is lost.
 
 Five sections, with the games each one has:
 
@@ -63,6 +63,8 @@ Five sections, with the games each one has:
 - **Sing it!** Short original chants made from the unit word (or counting up to 5 or 10), with a clap button. The chants are not from any existing song.
 - **Build a word:** drag letters into the empty boxes. "1 missing letter" is easy, "Spell it all" is harder. Spelling is always English.
 - **Rainbow:** finishing a game adds a color (and a star). Seven colors make a rainbow, which gives bonus stars. A letter gets a 🌈 after she gets it right 3 times.
+- **Her progress (parent view only):** at the bottom of the Games screen, every letter, number, color, shape, and unit word shows green (mastered, 3 right answers), yellow (started), or gray (not yet), plus a list of what she has started but not mastered. Solana's view does not show it. It counts right answers from Pop it, Match it, and Count it, and it is saved on this device (and in the backup).
+- **Practice what she is missing:** each section on the progress card has a 🎯 Practice button, and the Games screen has a Practice switch (🎲 Everything or 🎯 What I am missing). In practice mode, Pop it, Match it, and Count it aim at pieces with fewer than 3 right answers (the balloons still include other pieces as choices). If everything in a section is mastered, it plays with everything.
 - **Language:** Letters are English. Numbers, colors, and shapes are English, or Spanish when her focus language is Spanish. Unit words use English or her focus language.
 - **Letter cards:** tap any letter to see it, hear it, and (in the parent view) record the letter sound in your voice. Phones read single letters aloud as names, so your recorded sound teaches the sound best.
 - **Spoken instructions:** each game explains how to play out loud the first time it starts, and the **How to play** button repeats it any time. There is an on/off switch on the Games screen. Spanish instructions play only when she is practicing Spanish.
