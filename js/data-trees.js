@@ -51,7 +51,7 @@
         craft: ['Paint a seed growing from a dot into a tree on one long paper.', 'Make seed pictures with big dried beans (adult only, never in mouth).', 'Make a pine cone bird feeder with adult help.'],
         science: ['Plant a bean in a clear cup with a wet paper towel and watch it sprout over days.', 'Open a pine cone and find the seeds inside.', 'Compare seeds: big, small, smooth, rough.'],
         math: ['Count 5 seeds into a cup.', 'Sort seeds by size.', 'Measure the sprout every 2 days with a ruler or a piece of yarn.'],
-        sel: ['Patience: seeds need time. What are we waiting for?', 'Growth mindset: "I can not do it YET."', 'Take care of the sprout together every day.'],
+        sel: ['Patience: seeds need time. What are we waiting for?', 'Growth mindset: "I cannot do it YET."', 'Take care of the sprout together every day.'],
         questions: ['What does a seed need?', 'What will grow from the acorn?', 'What happens first, then next?', 'How did the sprout change?'],
         teacherAsk: 'Ask whether the class is planting seeds so you can match it at home.'
       },

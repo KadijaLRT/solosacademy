@@ -8,22 +8,21 @@ This app merges the earlier Sky Academy app with the Little Learners play featur
 
 - **Today**: a daily flight plan of about 17, 22, or 32 minutes, with tap-to-complete stops that earn stars.
 - **Words**: 60 words in six languages (Spanish, French, Mandarin, Korean, Arabic, Zulu) with sounds-like guides, device voices, a quiz, and a Record button for native speakers. Plus English word building, clear-speech sound play, tongue ticklers, and a question ladder.
-- **Play** (new; when she has learned every word in a week, it suggests skipping ahead or going deeper):
+- **Learn** (when she has learned every word in a week, it suggests skipping ahead or going deeper):
   - **Words**: picture cards for the current unit in English and her focus language, with a Spidey line for each word and a "learned" star.
   - **Sing**: 10 sound drills themed on Encanto, The Lion King, Tarzan, Trolls, Sing, Minions, Hotel Transylvania, Bebefinn, Pinkfong, and Frozen, with a "we did our 5 minutes" button. The chants are original and contain no song lyrics.
   - **Story**: a sentence expander (one word, short, longer), a feelings game, and the optional Groq story line button.
-  - **Stickers**: a sticker board that unlocks as stars are earned.
 - **Feelings**: a toolkit with six feelings in six languages, airplane breathing, calm-down tools, and scripts for hard moments.
-- **Theme**: pick the unit. All five units (Trees, Water, Community Helpers, How Things Move, Buildings) have a full 6-week daily plan: weekly words, books, songs, movement, Spidey and airplane play, crafts, science, number play, feelings, and questions. The Today tab follows the selected unit, and each unit keeps its own start date (Settings). You can add your own words to any unit.
+- **School**: pick the unit. All five units (Trees, Water, Community Helpers, How Things Move, Buildings) have a full 6-week daily plan: weekly words, books, songs, movement, Spidey and airplane play, crafts, science, number play, feelings, and questions. The Today tab follows the selected unit, and each unit keeps its own start date (Settings). You can add your own words to any unit.
 - **Parent move of the day** (on Today): one small, research-backed habit each day (serve and return, notice and adapt, talking it through, real-life jobs, praising effort, open-ended play, music and rhythm, moving outdoors, her own choices, everyday math, feelings and limits, steady routines).
 - **Grow**: CDC milestone checklists, a **Parent guide** (big ideas, 11 kinds of daily parent moves, a Montessori home-setup checklist, an "An eclectic approach that fits her" section, a "Later on" section on gifted-learner curriculum models, sources), a **Daily log** (gymnastics skills, speech clarity 1 to 5, new words, and an Interest entry that shows what she keeps choosing), a growth map to age 10, and Big Goals.
 - **Activities**: soccer, gymnastics, theater (January 2027), and horseback riding.
-- **Settings, Look**: retro everywhere (default), retro on kid screens only (Words and Play), or the classic calm look.
+- **Settings, Look**: retro everywhere (default), retro on kid screens only (Games, Learn, and Feelings), or the classic calm look.
 
 ## Two views: parent and Solana
 
-- **Parent view** (the default): everything, including Today, Theme, Grow, Activities, the Parent guide, and Settings.
-- **Solana's view**: only Play, Words, Feelings, and Stickers, with big kid-friendly screens and no parent text. Tap the 👧 button in the parent view to hand over the device. The app reopens in whichever view you used last.
+- **Parent view** (the default): everything, including Today, Learn, Games, School, Grow, Activities, the Parent guide, and Settings.
+- **Solana's view**: only Games, Learn, and Feelings, with big kid-friendly screens and no parent text. Tap the 👧 button in the parent view to hand over the device. The app reopens in whichever view you used last.
 - **PIN**: in Settings, Profiles, set a 4 to 6 digit PIN. Switching from Solana's view back to the parent view (the 👪 button) then asks for it. The PIN is a child lock, not strong security. It is stored on the device in scrambled form.
 - These are two views on one device, not two online accounts. Both share the same saved progress. Separate logins on separate devices would need a server and a database, which this version deliberately does not use.
 
@@ -77,7 +76,7 @@ Your voice recordings and your Game settings are saved on the device where you m
 
 ## Character voices and Mom's voice
 
-- **Character-style voices (Play, Words and Story):** pick Hero, Silly helper, Sparkle, Big bear, or Regular. These only change the pitch and speed of the device's own voice. They are not the real voices from her shows. Sound drills in the Sing tab always use the regular voice so each sound stays clear. How they sound depends on the voices on the device, so test on her iPad.
+- **Character-style voices (Learn and Story):** pick Hero, Silly helper, Sparkle, Big bear, or Regular. These only change the pitch and speed of the device's own voice. They are not the real voices from her shows. Sound drills in the Sing screen always use the regular voice so each sound stays clear. How they sound depends on the voices on the device, so test on her iPad.
 - **Mom's voice:** on a Words card in the parent view, tap **Record English** or **Record Spanish**, do your best character voice, then tap **Stop**. A **Mom** play button then appears for Solana. One clip per word and language, up to 20 seconds. Moving to another word stops and saves the clip. Clips stay on the device (not in the backup).
 
 ## Voices
@@ -102,7 +101,7 @@ Re-upload the folder. Change `CACHE` in `sw.js` to a new name each time (for exa
 ## Files
 
 - `index.html`, `styles.css`, `retro.css`, `js/app.js`: the app and its looks
-- `js/fun.js`, `js/data-fun.js`: Play tab, units, daily log, sing drills
+- `js/fun.js`, `js/data-fun.js`: Learn tab, units, daily log, sing drills
 - `js/games.js`, `games.css`, `js/data-letters.js`, `js/data-basics.js`: the Games tab (letters, numbers, colors, shapes, counting, chants)
 - `js/parent.js`, `js/data-parent.js`: parent move of the day and the Parent guide
 - `js/data-words.js`, `js/data-english.js`, `js/data-trees.js`, `js/data-pathway.js`: the original Sky Academy content
@@ -125,7 +124,7 @@ Solana hears "Hello Solana! Let's learn!" and you hear "Hello Kadija! Here's Sol
 
 ## Changing the unit
 
-Theme tab (grown-up view), tap the unit at the top: Trees, Water, Community Helpers, How Things Move, or Buildings. A 📅 means the unit has a full 6-week daily plan. For a new unit, set its start date in Settings (the label shows the unit name) so the weeks line up with her class.
+School tab (grown-up view), tap the unit at the top: Trees, Water, Community Helpers, How Things Move, or Buildings. A 📅 means the unit has a full 6-week daily plan. For a new unit, set its start date in Settings (the label shows the unit name) so the weeks line up with her class.
 
 ## Less reading (grown-up view)
 
@@ -147,3 +146,9 @@ The first tile on Solana's Games screen walks her through up to five short games
 ## Natural English voice (optional)
 Settings > Languages and voice > Natural English voice. Uses `api/tts.js` (Groq Orpheus, English only) with the same `GROQ_API_KEY`.
 First time, accept the model terms in the Groq console. Lines are cached on the device. Spanish, singing and character voices stay on the device voice. If it fails, the device voice plays instead.
+
+## Color system (Solana's screens)
+Calm cream and sky backgrounds. Bright, saturated colors mean "tap me"; pastels and neutrals are decoration. Subject anchors: blue = letters and reading, yellow = numbers, green = shapes, red = colors, teal and purple = topics, play and the daily plan. Right answers glow kelly green; a try-again is a warm orange ring, never red.
+
+## Word pictures
+Pictures are original vector art drawn with a 3D look (soft gradients, lighting, ground shadow, natural colors, no cartoon faces). They are not photographs. Words with no drawing fall back to emoji.

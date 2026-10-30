@@ -15,7 +15,7 @@
         .concat(W('Spring months', [['March', 'marzo', '🍀'], ['April', 'abril', '🌧️'], ['May', 'mayo', '🌷']]))
         .concat(W('Summer months', [['June', 'junio', '☀️'], ['July', 'julio', '🎆'], ['August', 'agosto', '🏖️']]))
         .concat(W('Fall months', [['September', 'septiembre', '🍎'], ['October', 'octubre', '🎃'], ['November', 'noviembre', '🦃']])),
-      feelings: [{ q: 'How does she feel in a snowy month when she can build a snowman?', a: 'happy', es: 'feliz' }, { q: 'How does she feel on a birthday month? Cake is coming!', a: 'excited', es: 'emocionado' }, { q: 'How does she feel after she says all twelve months?', a: 'proud', es: 'orgulloso' }] },
+      feelings: [{ q: 'How does she feel in a snowy month when she can build a snowman?', a: 'happy', es: 'feliz' }, { q: 'How does she feel in her birthday month? Cake is coming!', a: 'excited', es: 'emocionado' }, { q: 'How does she feel after she says all twelve months?', a: 'proud', es: 'orgulloso' }] },
     { id: 'seasons', name: 'Seasons and weather', emoji: '🌦️', c1: '#cdeeff', c2: '#eefaff', weeks: ['Seasons', 'Weather', 'What to wear'],
       words: W('Seasons', [['spring', 'la primavera', '🌷'], ['summer', 'el verano', '🏖️'], ['fall', 'el otoño', '🍂'], ['winter', 'el invierno', '❄️']])
         .concat(W('Weather', [['sun', 'el sol', '☀️'], ['rain', 'la lluvia', '🌧️'], ['snow', 'la nieve', '☃️'], ['wind', 'el viento', '💨'], ['cloud', 'la nube', '☁️'], ['rainbow', 'el arco iris', '🌈'], ['storm', 'la tormenta', '⛈️']]))
@@ -35,7 +35,22 @@
       words: W('Farm', [['cow', 'la vaca', '🐄'], ['pig', 'el cerdo', '🐖'], ['horse', 'el caballo', '🐴'], ['sheep', 'la oveja', '🐑'], ['chicken', 'la gallina', '🐔'], ['duck', 'el pato', '🦆']])
         .concat(W('Wild', [['lion', 'el león', '🦁'], ['elephant', 'el elefante', '🐘'], ['giraffe', 'la jirafa', '🦒'], ['monkey', 'el mono', '🐒'], ['zebra', 'la cebra', '🦓'], ['bear', 'el oso', '🐻']]))
         .concat(W('Ocean', [['fish', 'el pez', '🐟'], ['whale', 'la ballena', '🐋'], ['octopus', 'el pulpo', '🐙'], ['shark', 'el tiburón', '🦈'], ['turtle', 'la tortuga', '🐢'], ['dolphin', 'el delfín', '🐬']])),
-      feelings: [{ q: 'How does the baby lion feel when he is with his family?', a: 'happy', es: 'feliz' }, { q: 'How does the little duck feel when she cannot find her mom?', a: 'sad', es: 'triste' }, { q: 'How does the monkey feel when he swings to the top of the tree?', a: 'proud', es: 'orgulloso' }] }
+      feelings: [{ q: 'How does the baby lion feel when he is with his family?', a: 'happy', es: 'feliz' }, { q: 'How does the little duck feel when she cannot find her mom?', a: 'sad', es: 'triste' }, { q: 'How does the monkey feel when he swings to the top of the tree?', a: 'proud', es: 'orgulloso' }] },
+    { id: 'plane', name: 'Airplanes and travel', emoji: '✈️', c1: '#cfeaff', c2: '#eaf6ff', weeks: ['The plane', 'The airport', 'Things that go'],
+      words: W('The plane', [['airplane', 'el avión', '✈️'], ['pilot', 'el piloto', '🧑‍✈️'], ['wing', 'el ala', '🪽'], ['wheel', 'la rueda', '🛞'], ['helicopter', 'el helicóptero', '🚁']])
+        .concat(W('The airport', [['airport', 'el aeropuerto', '🛫'], ['runway', 'la pista', '🛬'], ['suitcase', 'la maleta', '🧳'], ['ticket', 'el boleto', '🎫'], ['tower', 'la torre', '🗼']]))
+        .concat(W('Things that go', [['car', 'el carro', '🚗'], ['bus', 'el autobús', '🚌'], ['train', 'el tren', '🚆'], ['boat', 'el barco', '⛵'], ['bike', 'la bicicleta', '🚲']])),
+      feelings: [{ q: 'How does the pilot feel when the plane lifts off the ground?', a: 'excited', es: 'emocionado' }, { q: 'How does a little girl feel when she lands and sees Grandma?', a: 'happy', es: 'feliz' }, { q: 'How does the pilot feel after a smooth landing?', a: 'proud', es: 'orgulloso' }] },
+    { id: 'food', name: 'Food', emoji: '🍎', c1: '#ffe0e0', c2: '#fff1f1', weeks: ['Fruit', 'Veggies', 'Meals'],
+      words: W('Fruit', [['apple', 'la manzana', '🍎'], ['banana', 'el plátano', '🍌'], ['grapes', 'las uvas', '🍇'], ['orange', 'la naranja', '🍊'], ['strawberry', 'la fresa', '🍓'], ['watermelon', 'la sandía', '🍉']])
+        .concat(W('Veggies', [['carrot', 'la zanahoria', '🥕'], ['corn', 'el maíz', '🌽'], ['broccoli', 'el brócoli', '🥦'], ['tomato', 'el tomate', '🍅'], ['potato', 'la papa', '🥔'], ['cucumber', 'el pepino', '🥒']]))
+        .concat(W('Meals', [['milk', 'la leche', '🥛'], ['bread', 'el pan', '🍞'], ['egg', 'el huevo', '🥚'], ['cheese', 'el queso', '🧀'], ['rice', 'el arroz', '🍚'], ['water', 'el agua', '💧']])),
+      feelings: [{ q: 'How does she feel when she tastes a sweet strawberry?', a: 'happy', es: 'feliz' }, { q: 'How does she feel when she tries a new food for the first time?', a: 'proud', es: 'orgulloso' }, { q: 'How does she feel when her ice cream falls on the ground?', a: 'sad', es: 'triste' }] },
+    { id: 'home', name: 'Home and family', emoji: '🏠', c1: '#e6f5d0', c2: '#f4fbe8', weeks: ['Rooms', 'Things at home', 'Family'],
+      words: W('Rooms', [['kitchen', 'la cocina', '🍳'], ['bedroom', 'el dormitorio', '🛏️'], ['bathroom', 'el baño', '🛁'], ['living room', 'la sala', '🛋️']])
+        .concat(W('Things at home', [['bed', 'la cama', '🛏️'], ['chair', 'la silla', '🪑'], ['table', 'la mesa', '🍽️'], ['door', 'la puerta', '🚪'], ['window', 'la ventana', '🪟'], ['lamp', 'la lámpara', '💡']]))
+        .concat(W('Family', [['mom', 'mamá', '👩'], ['dad', 'papá', '👨'], ['baby', 'el bebé', '👶'], ['grandma', 'la abuela', '👵'], ['grandpa', 'el abuelo', '👴'], ['sister', 'la hermana', '👧'], ['brother', 'el hermano', '👦']])),
+      feelings: [{ q: 'How does she feel when Mom or Dad gives her a big hug?', a: 'happy', es: 'feliz' }, { q: 'How does she feel when her family goes out and she misses them?', a: 'sad', es: 'triste' }, { q: 'How does she feel when she helps set the table all by herself?', a: 'proud', es: 'orgulloso' }] }
   ];
   T.forEach((u) => { u.school = false; SA.units.push(u); });
   /* Topics shown first on Solana's pick-a-topic screen */

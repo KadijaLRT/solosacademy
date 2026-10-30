@@ -153,3 +153,33 @@ html { -webkit-text-size-adjust: 100%; }
 .em .ic, .em svg { width: 1em; height: 1em; }
 .balloon b.em .ic { width: 72px; height: 72px; }
 .cue-e .ic { width: 1em; height: 1em; }
+
+/* ===== Color system for Solana's screens =====
+   Calm cream and sky backgrounds. Anything bright and saturated can be tapped. Pastels and neutrals are decoration.
+   Subject anchors: blue = letters and reading, yellow = numbers, green = shapes, red = colors, purple and teal = topics and play.
+   Right answers glow kelly green. A try-again is a warm orange ring, never red. */
+html body.kid.kid { --sa-blue: #1f6feb; --sa-yellow: #ffd21f; --sa-red: #e5322d; --sa-green: #27ae3a; --sa-purple: #7b4dff; --sa-teal: #0fa3b1; --sa-orange: #ff9a3d; background: linear-gradient(180deg, #fbf6e9, #e6f3fc) !important; background-attachment: fixed !important; }
+html body.kid.kid::before { display: none !important; }
+html body.kid .gbig { background: var(--sa-blue); color: #fff; }
+html body.kid .gbig:nth-child(n) { background: var(--sa-blue); color: #fff; }
+html body.kid .gbig[data-s="letters"] { background: var(--sa-blue); color: #fff; }
+html body.kid .gbig[data-s="numbers"] { background: var(--sa-yellow); color: var(--ink); }
+html body.kid .gbig[data-s="colors"] { background: var(--sa-red); color: #fff; }
+html body.kid .gbig[data-s="shapes"] { background: var(--sa-green); color: #fff; }
+html body.kid .gbig[data-act="gtopic"] { background: var(--sa-teal) !important; color: #fff; }
+html body.kid .gbig.pathbig { background: var(--sa-purple) !important; color: #fff; }
+html body.kid .gbig.wide { background: #fff; color: var(--ink); }
+html body.kid .gbig[data-s="today"] { background: var(--sa-purple); color: #fff; }
+html body.kid .gbig[data-s="songs"], html body.kid .gbig[data-s="mine"] { background: var(--sa-teal); color: #fff; }
+html body.kid .gbig[data-s="faces"], html body.kid .gbig[data-s="breath"], html body.kid .gbig[data-s="movies"] { background: var(--sa-purple); color: #fff; }
+html body.kid .gbig[data-act="kstop"][data-id="math"], html body.kid .gbig[data-act="kstop"][data-id="numbers"] { background: var(--sa-yellow); color: var(--ink); }
+html body.kid .gbig[data-act="kstop"] { background: var(--sa-blue); color: #fff; }
+html body.kid .gbig[data-act="kstop"][data-id="math"] { background: var(--sa-yellow); color: var(--ink); }
+html body.kid .gbig[data-act="kstop"][data-id="feel"], html body.kid .gbig[data-act="kstop"][data-id="move"] { background: var(--sa-red); color: #fff; }
+html body.kid .gbig[data-act="kstop"][data-id="art"] { background: var(--sa-teal); color: #fff; }
+html body.kid .gbig[style*="c9f2c9"] { background: #c9f2c9 !important; color: var(--ink); border-color: var(--sa-green); }
+html body.kid .gbig .ic { filter: drop-shadow(0 1px 0 rgba(0, 0, 0, .15)); }
+html body.kid .slot.ok { background: #bff0c8; border: 4px solid var(--sa-green); box-shadow: 0 0 0 4px rgba(39, 174, 58, .35); }
+html body.kid .wobble { box-shadow: 0 0 0 6px var(--sa-orange) !important; }
+html body.kid .card:not(.hero) { background: #fffdf6; }
+html body.kid .tile { background: #fff; }

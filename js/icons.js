@@ -33,6 +33,7 @@
     map: '<path d="M6 14L22 8L42 14L58 8V50L42 56L22 50L6 56Z" fill="' + Y + '"/><path d="M22 8V50M42 14V56"/><path d="M28 28L36 36M36 28L28 36" stroke="' + R + '"/>',
     sprout: '<path d="M32 58V30"/><path d="M32 34C32 20 20 14 8 16C8 30 18 36 32 34Z" fill="' + G + '"/><path d="M32 28C32 16 42 8 56 10C56 24 46 30 32 28Z" fill="' + G + '"/><ellipse cx="32" cy="58" rx="14" ry="3" fill="' + O + '"/>',
     /* topics */
+    food: '<path d="M32 20C20 12 6 20 8 36C10 50 22 58 32 52C42 58 54 50 56 36C58 20 44 12 32 20Z" fill="' + R + '"/><path d="M32 20C32 14 34 10 38 6"/><path d="M38 12C44 8 50 10 52 14C46 18 40 16 38 12Z" fill="' + G + '"/>',
     days: cal(R, t(32, 50, 24, '7')),
     months: cal(B, '<circle cx="22" cy="36" r="3" fill="' + INK + '"/><circle cx="32" cy="36" r="3" fill="' + INK + '"/><circle cx="42" cy="36" r="3" fill="' + INK + '"/><circle cx="22" cy="46" r="3" fill="' + INK + '"/><circle cx="32" cy="46" r="3" fill="' + R + '"/><circle cx="42" cy="46" r="3" fill="' + INK + '"/>'),
     seasons: '<circle cx="24" cy="24" r="12" fill="' + Y + '"/><path d="M24 4v5M24 39v5M4 24h5M39 24h5M10 10l4 4M38 10l-4 4"/><path d="M22 54a10 10 0 0 1 2-20a14 14 0 0 1 26 4a8 8 0 0 1 2 16Z" fill="' + W + '"/>',

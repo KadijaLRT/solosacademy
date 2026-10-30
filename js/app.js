@@ -19,7 +19,7 @@
   const WBY = {}; S.words.forEach((w) => { WBY[w.id] = w; });
   const CATBY = {}; S.categories.forEach((c) => { CATBY[c.id] = c; });
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-  const APP_VERSION = 38;
+  const APP_VERSION = 46;
   const KID_TABS = [['games', '🎈', 'Games'], ['learn', '📚', 'Learn'], ['feel', '💛', 'Feelings']];
   const PARENT_TABS = [['today', '🏠', 'Today'], ['learn', '📚', 'Learn'], ['games', '🎈', 'Games'], ['theme', '🏫', 'School'], ['grow', '🚀', 'Grow'], ['act', '🎭', 'Activities']];
 
@@ -92,7 +92,15 @@
   }
   function wordsFor(lang) { return S.words.filter((w) => w[lang]); }
   const lkey = (lang, id) => lang + ':' + id;
-  function learnedCount(lang) { return Object.keys(state.learned).filter((k) => k.indexOf(lang + ':') === 0 && state.learned[k]).length; }
+  /* Words Solana mastered in her games (3 right answers) count in the passport, along with words you mark as learned. */
+  function masteredSet() {
+    const set = new Set(); const gw = state.gameWins || {};
+    Object.keys(gw).forEach((k) => { if (gw[k] >= 3 && k.indexOf('words:') === 0) { const en = k.split(':').slice(2).join(':').toLowerCase(); if (en) set.add(en); } });
+    return set;
+  }
+  const isLearned = (lang, w, ms) => !!state.learned[lkey(lang, w.id)] || (ms || masteredSet()).has(String(w.en).toLowerCase());
+  const gameMastered = (lang, w, ms) => !state.learned[lkey(lang, w.id)] && (ms || masteredSet()).has(String(w.en).toLowerCase());
+  function learnedCount(lang) { const ms = masteredSet(); return wordsFor(lang).filter((w) => isLearned(lang, w, ms)).length; }
   function starTotal() {
     let n = 0;
     Object.keys(state.done).forEach((d) => { Object.keys(state.done[d]).forEach((b) => { if (state.done[d][b]) n++; }); });
@@ -385,7 +393,7 @@
     const order = S.categories.map((c) => c.id);
     const pool = wordsFor(lang).slice().sort((a, b) => ((inTheme(b) ? 1 : 0) - (inTheme(a) ? 1 : 0)) || (order.indexOf(a.c) - order.indexOf(b.c)));
     if (!pool.length) return [];
-    const unlearned = pool.filter((w) => !state.learned[lkey(lang, w.id)]);
+    const msU = masteredSet(); const unlearned = pool.filter((w) => !isLearned(lang, w, msU));
     const src = unlearned.length >= 3 ? unlearned : pool;
     const start = (info.diff * 3) % src.length; const out = [];
     for (let i = 0; i < 3; i++) out.push(src[(start + i) % src.length]);
@@ -481,6 +489,7 @@
     if (info.pre) h += '<div class="card note">Your theme starts on ' + esc(startFor(info.th.id)) + '. This is a preview of week 1.</div>';
     const nextId = ids.find((b) => !today[b]);
     if (nextId) h += '<div class="card good nextstop"><b>👉 Next stop</b><div>' + BLOCKS[nextId].e + ' ' + BLOCKS[nextId].t + ' · ' + BLOCKS[nextId].m + ' min</div></div>';
+    h += '<div class="card note small">👧 <b>In her view:</b> Learn, then Today. She sees these same stops as big pictures. Feelings, Talk, Words, Story and Numbers open the matching activity for her; Move and Make wait for you to do them together. Ticks show on both screens.</div>';
     h += stageCard();
     h += S.parent.moveCard(ctx, info.diff);
     ids.forEach((b) => {
@@ -492,7 +501,11 @@
     h += '<h2>Language passport</h2><div class="grid wide">' + S.langs.map((l) => {
       const n = learnedCount(l.id); const t = wordsFor(l.id).length; const lv = stampLevel(l.id);
       return '<button class="stamp ' + (n >= 10 ? 'got' : '') + '" style="font:inherit;color:inherit;text-align:left;cursor:pointer" data-act="wlang" data-lang="' + l.id + '"><span class="fl">' + l.flag + '</span><div style="flex:1"><b>' + l.name + '</b><div class="progress"><i style="width:' + (t ? Math.round(n / t * 100) : 0) + '%"></i></div><span class="small muted">' + n + ' of ' + t + ' learned</span></div><span class="lv" title="' + lv[1] + '">' + lv[0] + '</span></button>';
-    }).join('') + '</div><p class="small muted">Tap "Learned" on a word card when she knows it. Bronze at 10 words, silver at 30, gold at all.</p>';
+    }).join('') + '</div><p class="small muted">Words count when you tap "Learned" on a word card, and automatically when she masters them in her games (3 right answers). Bronze at 10 words, silver at 30, gold at all.</p>';
+    const mws = Array.from(masteredSet()).sort();
+    h += '<div class="card"><b>🎈 Mastered in her games: ' + mws.length + (mws.length === 1 ? ' word' : ' words') + '</b>' +
+      (mws.length ? '<div class="chips" style="flex-wrap:wrap;overflow:visible;margin-top:8px">' + mws.slice(0, 40).map((x) => '<button class="chip" data-act="say-en" data-text="' + esc(x) + '">' + esc(x) + '</button>').join('') + '</div>' + (mws.length > 40 ? '<p class="small muted">Showing 40 of ' + mws.length + '.</p>' : '')
+        : '<p class="small muted">Nothing yet. A word shows here after she answers it right 3 times in Games.</p>') + '</div>';
     return h;
   }
 
@@ -514,10 +527,11 @@
       S.categories.map((c) => '<button class="chip" aria-pressed="' + (ui.wcat === c.id) + '" data-act="wcat" data-cat="' + c.id + '">' + c.emoji + ' ' + c.name + '</button>').join('') + '</div>';
     const list = wordsFor(lang).filter((w) => ui.wcat === 'all' || w.c === ui.wcat);
     ui.cardList = list.map((w) => ({ lang, id: w.id }));
+    const msL = masteredSet();
     h += '<div class="grid">' + list.map((w) => {
-      const x = w[lang]; const k = lkey(lang, w.id); const rtl = L.dir === 'rtl' ? ' rtl' : '';
-      return '<button class="wc' + (state.learned[k] ? ' learned' : '') + '" data-act="open-card" data-lang="' + lang + '" data-id="' + w.id + '">' +
-        (recSet.has(k) ? '<span class="badge" title="Has a recording">🎙</span>' : '') + (state.learned[k] ? '<span class="badge" style="left:10px;right:auto">✅</span>' : '') +
+      const x = w[lang]; const k = lkey(lang, w.id); const lrn = isLearned(lang, w, msL); const rtl = L.dir === 'rtl' ? ' rtl' : '';
+      return '<button class="wc' + (lrn ? ' learned' : '') + '" data-act="open-card" data-lang="' + lang + '" data-id="' + w.id + '">' +
+        (recSet.has(k) ? '<span class="badge" title="Has a recording">🎙</span>' : '') + (lrn ? '<span class="badge" style="left:10px;right:auto">' + (state.learned[k] ? '✅' : '🎈') + '</span>' : '') +
         '<span class="em">' + w.e + '</span><span class="w' + rtl + '">' + esc(x[0]) + '</span><span class="p">' + esc(x[1]) + '</span><span class="en">' + esc(w.en) + '</span></button>';
     }).join('') + '</div>';
     return h;
@@ -565,6 +579,7 @@
       (hasRec ? '<button class="btn alt small" data-act="rec-del" data-key="' + esc(k) + '">Delete recording</button>' : '') + '</div>' +
       '<div class="row" style="justify-content:center;margin-top:14px"><button class="btn ' + (state.said[k] ? '' : 'alt') + '" data-act="card-said">⭐ ' + (state.said[k] ? 'She said it!' : 'She said it') + '</button>' +
       '<button class="btn ' + (state.learned[k] ? '' : 'alt') + '" data-act="card-learned">✅ ' + (state.learned[k] ? 'Learned' : 'Mark learned') + '</button></div>' +
+      (gameMastered(lang, w) ? '<p class="small muted center">🎈 She mastered this word in her games.</p>' : '') +
       '<div class="row between" style="margin-top:16px"><button class="btn alt small" data-act="card-nav" data-dir="-1">◀ Back</button><span class="muted small">' + (ui.cardIdx + 1) + ' of ' + ui.cardList.length + '</span><button class="btn alt small" data-act="card-nav" data-dir="1">Next ▶</button></div></div>';
   }
   function openCard(lang, id) {
@@ -795,7 +810,7 @@
     return '<div class="card warn"><b>➕ ' + label + '</b><div>Nothing up next yet.</div></div>';
   }
   function viewAct() {
-    let h = '<h2>Activities</h2><p class="muted">Goal: one sport and one art at all times. There is no limit on how many she can try.</p>';
+    let h = '<h2>Activities</h2><p class="muted">Goal: one sport and one art at all times. There is no limit on how many she can try.</p><div class="card note small">👧 <b>In her view:</b> Learn, then My day. Anything marked Active now or Next up shows there, and she hears it read aloud.</div>';
     h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' + goalTile('sport', 'Sport') + goalTile('art', 'Art') + '</div>';
     const order = ['active', 'next', 'planned', 'paused', 'done'];
     const list = state.activities.slice().sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status));
@@ -837,12 +852,12 @@
       '<label class="f">Voice speed</label>' + sel('rate', [[0.6, 'Slow'], [0.8, 'Gentle (default)'], [1, 'Normal']]) +
       '<label class="f">Natural English voice (needs internet and the Groq key)</label>' + sel('neural', [['', 'Off: device voice (default)'], ['1', 'On: natural voice, falls back if it fails']]) +
       '<p><button class="btn alt small" data-act="test-voice">🔊 Test voice</button></p></div>';
-    hs += '<div class="card"><b>📖 Story character</b><p class="small muted">Who the word lines and story use. Spidey is the default.</p><div class="chips">' + S.fun.heroes.map((h) => '<button class="chip" aria-pressed="' + ((state.hero || 'spidey') === h[0]) + '" data-act="hero-set" data-id="' + h[0] + '">' + h[1] + ' ' + esc(h[2] || state.nick || 'Solana') + '</button>').join('') + '</div></div>';
+    hs += '<div class="card"><b>📖 Story character</b><p class="small muted">Who stars in the word lines and the story. Spidey is the default.</p><div class="chips">' + S.fun.heroes.map((h) => '<button class="chip" aria-pressed="' + ((state.hero || 'spidey') === h[0]) + '" data-act="hero-set" data-id="' + h[0] + '">' + h[1] + ' ' + esc(h[2] || state.nick || 'Solana') + '</button>').join('') + '</div></div>';
     hs += '<div class="card"><b>🌳 Class unit</b><label class="f" for="s-theme">' + esc(planTheme().name) + ' start date</label><input type="date" id="s-theme" data-set="themeStart" value="' + esc(startFor(planTheme().id)) + '">' +
       '<p class="small muted">Change the unit itself in the School tab.</p></div>';
     hs += '<div class="card"><b>🎈 Games and levels</b><p class="small muted">What she plays, her start level, and practice live in Game settings.</p><p style="margin-bottom:0"><button class="btn" data-act="go" data-to="games">Open Game settings</button></p></div>';
     hs += '<div class="card"><b>🎨 How her screens look</b><label class="f">Style</label>' + sel('look', [['retro', 'Retro preschool TV everywhere (default)'], ['mixed', 'Retro for kid screens only'], ['classic', 'Classic calm look']]) +
-      '<p class="small muted">Kid screens are Games, Play, Words, Feelings, and Stickers. Parent screens keep the calm look in the middle option.</p></div>';
+      '<p class="small muted">Kid screens are Games, Learn, and Feelings. Parent screens keep the calm look in the middle option.</p></div>';
     hs += '<div class="card"><b>Voice pack (send recordings and game settings to another device)</b><p class="small muted">Your voice clips and Game setup choices live on this device only. To put them on Solana’s device: 1. Tap Make voice pack here. 2. Tap Share and send it to her device (AirDrop or Messages). 3. On her device, switch to the grown-up view, open Settings, tap Import, and pick the file. This device has ' + recSet.size + (recSet.size === 1 ? ' recording' : ' recordings') + '. The file stays between your own devices.</p>' +
       '<div class="row"><button class="btn alt" data-act="pack-make">' + (ui.pack ? 'Make it again' : 'Make voice pack') + '</button><label class="btn alt" style="display:inline-flex;align-items:center;cursor:pointer">Import<input id="packFile" type="file" accept="application/json,.json" hidden></label></div>' +
       (ui.pack ? '<p class="small">' + 'Ready: ' + ui.pack.n + (ui.pack.n === 1 ? ' recording' : ' recordings') + ' and your game settings.' + '</p>' + '<div class="row"><button class="btn sun" data-act="pack-share">📤 Share</button><button class="btn alt" data-act="pack-save">⬇ Save file</button></div>' : '') + '</div>';
@@ -851,18 +866,18 @@
     hm += '<div class="card"><b>📅 My daily plan</b><label class="f">Daily time</label>' + sel('level', [['light', 'Light, about 17 min'], ['standard', 'Standard, about 22 min'], ['stretch', 'Stretch, about 32 min']]) +
       '<p class="small muted">Short, playful sessions work best at this age, with conversation all day long. The CDC lists attention for 5 to 10 minutes as a milestone at age 5.</p>' +
       '<label class="f">Less reading</label>' + sel('lite', [['on', 'On: tap ⓘ for details'], ['off', 'Off: show all text']]) + '</div>';
-    hm += '<div class="card"><b>Profiles</b><p class="small muted">Two views on this device: the parent view (everything) and ' + esc(state.nick || 'your child') + '’s view (Play, Words, Feelings, Stickers). A PIN keeps the parent view closed when you switch to the child view. It is a child lock, not strong security, and both views share the same saved progress on this device.</p>' +
+    hm += '<div class="card"><b>Profiles</b><p class="small muted">Two views on this device: the parent view (everything) and ' + esc(state.nick || 'your child') + '’s view (Games, Learn, Feelings). A PIN keeps the parent view closed when you switch to the child view. It is a child lock, not strong security, and both views share the same saved progress on this device.</p>' +
       '<p>Parent PIN: <b>' + (state.pinHash ? 'set' : 'not set') + '</b></p><div class="row"><button class="btn small" data-act="pin-set-open">' + (state.pinHash ? 'Change PIN' : 'Set a PIN') + '</button>' + (state.pinHash ? '<button class="btn alt small" data-act="pin-remove">Remove PIN</button>' : '') + '</div>' +
       '<p style="margin-bottom:0"><button class="btn" data-act="role-toggle">Switch to ' + esc(state.nick || 'child') + '’s view</button></p></div>';
     hm += '<div class="card"><b>Backup</b><p class="small muted">Saves progress, settings, and activities as a file. Recordings are stored in this browser and are not in the backup.</p>' +
       '<div class="row"><button class="btn alt" data-act="backup">Download backup</button><label class="btn alt" style="display:inline-flex;align-items:center;cursor:pointer">Restore<input id="restoreFile" type="file" accept="application/json" hidden></label></div>' +
       '<p><button class="btn coral small" data-act="reset">Erase everything on this device</button></p></div>';
     hm += '<div class="card"><b>App version ' + APP_VERSION + '</b><p class="small muted">If this number is lower than the newest release, close the app fully and open it again twice.</p></div>';
-    hm += '<div class="card note"><b>Privacy</b><p class="small">No accounts, ads, or analytics. Everything is saved on this device. The only thing that uses the internet is the optional Groq story button on the Play tab, which sends just a word and the unit name. Clearing Safari website data will erase it, so download a backup now and then.</p></div>';
+    hm += '<div class="card note"><b>Privacy</b><p class="small">No accounts, ads, or analytics. Everything is saved on this device. The only things that use the internet are the optional Groq story button and the optional natural English voice. The story button sends just a word and the unit name; the natural voice sends one short English line at a time. Clearing Safari website data will erase it, so download a backup now and then.</p></div>';
     hm += '<div class="card"><b>Install on iPad or iPhone</b><p class="small">' + (standalone ? 'You are running it as an app. 🎉' : 'Open this page in Safari, tap the Share button, then "Add to Home Screen".') + '</p></div>';
     const tab = ui.sset === 'me' ? 'me' : 'solana';
     const seg = '<div class="chips seg"><button class="chip" aria-pressed="' + (tab === 'solana') + '" data-act="sset" data-t="solana">👧 ' + esc(state.nick || 'Solana') + '</button><button class="chip" aria-pressed="' + (tab === 'me') + '" data-act="sset" data-t="me">👤 Me</button></div>';
-    return '<h2>Settings</h2>' + seg + (tab === 'me' ? hm : hs) + '<p class="small muted center">Solo’s Academy v1. Word sounds are approximations. Please have a native speaker check them.</p>';
+    return '<h2>Settings</h2>' + seg + (tab === 'me' ? hm : hs) + '<p class="small muted center">Solo’s Academy. Word sounds are approximations. Please have a native speaker check them.</p>';
   }
   function openOnboarding() {
     openModal('<div class="center"><div class="big-em">✈️</div><h2 style="margin-top:0">Welcome aboard</h2></div><p>Two optional details help the app show the right stage. They stay on this device only. The first time you tap the 👧 button to hand the device to ' + 'your child, the app asks you to set a PIN.</p>' +
@@ -874,13 +889,22 @@
   /* ---------- router ---------- */
   const ctx = {
     S, ui, esc, speak, toast, dkey, LBY, starTotal, isChild,
-    /* Parent recordings for the Play tab. Keys look like mom:unit:word:lang. */
+    /* Parent recordings for the Learn tab. Keys look like mom:unit:word:lang. */
     rec: {
       has: (k) => recSet.has(k),
       play: (k) => playRecording(k),
       start: (k, cb) => startRecording(k, cb),
       stop: () => { try { if (recorder && recorder.state === 'recording') recorder.stop(); } catch (e) { /* ignore */ } },
       active: () => (recorder && recorder.state === 'recording' ? recTarget : null)
+    },
+    /* Today's plan, for Solana's Learn > Today screen. Both views share state.done, so a tick on either side shows on the other. */
+    plan: {
+      stops: () => {
+        const info = themeInfo(); const ids = LEVELS[state.level] || LEVELS.standard; const day = state.done[dkey()] || {}; const wk = info.week;
+        const short = (t) => { const s = String(t || ''); const i = s.indexOf(':'); if (i > 0 && i <= 40) return s.slice(0, i) + '!'; return s.split(' ').slice(0, 8).join(' ').replace(/[.,;:!?]+$/, '') + '!'; };
+        return ids.map((b) => ({ id: b, done: !!day[b], line: b === 'move' ? short(pick(wk.movement, info.diff)) : b === 'art' ? short(info.diff % 2 === 0 ? pick(wk.craft, info.diff) : pick(wk.science, info.diff)) : '' }));
+      },
+      mark: (b) => { const k = dkey(); state.done[k] = state.done[k] || {}; state.done[k][b] = true; save(); }
     },
     get state() { return state; },
     save: () => save(),

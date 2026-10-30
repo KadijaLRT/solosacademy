@@ -97,7 +97,7 @@
       '<button class="btn ' + (done ? 'sun' : 'alt') + '" style="flex:1" data-act="plearn">' + (done ? '⭐ Learned!' : '☆ Mark learned') + '</button>' +
       '<button class="btn alt" data-act="pnav" data-d="1" aria-label="Next word">▶</button></div>' +
       '<p class="center small muted">' + (p.i + 1) + ' of ' + list.length + '</p>' +
-      (allDone ? '<div class="card note"><b>🎉 All learned!</b><p>' + (p.wk === 'All' ? 'She knows every word in this unit. Go deeper with Story time, or a craft or science idea in the Theme tab.' : 'She knows every word this week. Skip ahead to the next week (skipping what is mastered is called compacting), or go deeper with Story time (enrichment).') + '</p>' + (p.wk === 'All' ? '' : '<button class="btn" data-act="pwk" data-w="' + esc(nextWk) + '">Next week ▶</button> ') + '<button class="btn alt" data-act="ptab" data-t="story">Go deeper: Story</button></div>' : '');
+      (allDone ? '<div class="card note"><b>🎉 All learned!</b><p>' + (p.wk === 'All' ? 'She knows every word in this unit. Go deeper with Story time, or a craft or science idea in the School tab.' : 'She knows every word this week. Skip ahead to the next week (skipping what is mastered is called compacting), or go deeper with Story time (enrichment).') + '</p>' + (p.wk === 'All' ? '' : '<button class="btn" data-act="pwk" data-w="' + esc(nextWk) + '">Next week ▶</button> ') + '<button class="btn alt" data-act="ptab" data-t="story">Go deeper: Story</button></div>' : '');
     return h;
   };
 
@@ -144,7 +144,7 @@
   F.customWords = function (ctx) {
     const esc = ctx.esc; const u = unitOf(ctx); const mine = (ctx.state.customWords || {})[u.id] || [];
     let h = '';
-    h += '<div class="card"><b>Add your own words</b><p class="small muted">Ask her teacher for this week’s list and add it here. Words appear in the Play tab.</p>' +
+    h += '<div class="card"><b>Add your own words</b><p class="small muted">Ask her teacher for this week’s list and add it here. Words appear in the Learn tab.</p>' +
       '<label class="f" for="cwen">English</label><input type="text" id="cwen" maxlength="30" autocomplete="off">' +
       '<label class="f" for="cwes">Spanish</label><input type="text" id="cwes" maxlength="30" autocomplete="off">' +
       '<label class="f" for="cwem">Emoji</label><input type="text" id="cwem" maxlength="4" value="⭐">' +
@@ -155,7 +155,7 @@
 
   F.unitPage = function (ctx) {
     const esc = ctx.esc; const u = unitOf(ctx); const mine = (ctx.state.customWords || {})[u.id] || [];
-    let h = '<div class="card hero"><b style="font-size:22px">' + u.emoji + ' ' + esc(u.name) + '</b><p>Starter unit. Word cards, Spidey lines, and story time in the Play tab all use this unit. The daily plan on the Today tab still follows Trees until a full plan for this unit is added.</p></div>';
+    let h = '<div class="card hero"><b style="font-size:22px">' + u.emoji + ' ' + esc(u.name) + '</b><p>Starter unit. Word cards, Spidey lines, and story time in the Learn tab all use this unit. The daily plan on the Today tab still follows Trees until a full plan for this unit is added.</p></div>';
     h += '<details class="acc" open><summary>' + (u.school ? '6-week plan outline' : 'Topic outline') + '</summary><div class="acc-body"><ol>' + u.weeks.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ol></div></details>';
     h += '<div class="card"><b>Words</b>' + u.words.concat(mine).map((w, i) => {
       const tl = tlFor(ctx, w);

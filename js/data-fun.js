@@ -88,7 +88,7 @@
     "emoji": "🦉",
     "week": "Animals in Trees",
     "spidey": "Whoo! The owl wakes up at night.",
-    "spideyEs": "El búho despierta de noche."
+    "spideyEs": "El búho se despierta de noche."
    },
    {
     "en": "nest",

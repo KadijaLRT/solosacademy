@@ -132,7 +132,7 @@
       approaches: [
         { t: 'Classical education', d: 'Emphasizes the tools of learning.', app: 'In the app: sound drills, word cards, reading and singing.' },
         { t: 'Lifestyle learning', d: 'Treats education as an integral part of the community around her.', app: 'In the app: real-life jobs, outdoor time, activities, and talking with native speakers.' },
-        { t: 'Mastery learning', d: 'Sequential, with immediate feedback.', app: 'In the app: step-by-step sing drills, quiz answers with instant stars, learned stars, and the sticker chart.' },
+        { t: 'Mastery learning', d: 'Sequential, with immediate feedback.', app: 'In the app: step-by-step sing drills, quiz answers with instant stars, and learned stars.' },
         { t: 'Integrated learning', d: 'Combines several subjects in project form or units of study.', app: 'In the app: each unit (Trees, Water) weaves language, science, math, movement, art, and feelings around one topic.' }
       ],
       models: [

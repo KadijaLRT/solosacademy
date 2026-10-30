@@ -8,7 +8,7 @@
   const SA = window.SA;
   const G = (SA.games = {});
   const F = () => SA.fun;
-  const BALLOON = ['#ff4d6d', '#3a86ff', '#ffd23f', '#2ec4b6', '#ff9f1c', '#8338ec'];
+  const BALLOON = ['#e5322d', '#1f6feb', '#ffd21f', '#27ae3a', '#7b4dff', '#0fa3b1'];
   const BANDS = ['#ff3b30', '#ff9500', '#ffd60a', '#34c759', '#0a84ff', '#5e5ce6', '#bf5af2'];
   const ALPHA = 'abcdefghijklmnopqrstuvwxyz'.split('');
   const POP_ROUNDS = 5;
@@ -699,6 +699,12 @@
     ctx.render(true); return true;
   }
 
+  /* Start one game directly (used by Learn > Today). Returns false when that section is turned off. */
+  G.launch = function (ctx, sec, game) {
+    const g = GS(ctx); if (!cfg(ctx).secs[sec]) return false;
+    g.sec = sec; g.path = null; if (gamesFor(ctx, sec).indexOf(game) < 0) return false;
+    startGame(ctx, g, game); return true;
+  };
   G.handle = function (a, d, ctx) {
     const g = GS(ctx); const f = F();
     if (a === 'ghub' || a === 'gexit' || a === 'gback' || a === 'gsec' || a === 'gtopic') { SA.kid.stop(); g.path = null; }

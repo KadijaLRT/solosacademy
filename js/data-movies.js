@@ -29,8 +29,8 @@
       { q: 'Olaf dreams of a warm summer day. How does Olaf feel?', a: 'excited' },
       { q: 'Anna and Elsa make up at the end. How do they feel?', a: 'happy' }] },
     { id: 'sing', title: 'Sing', e: '🎤', qs: [
-      { q: 'Meena is nervous to sing on stage. How does Meena feel?', a: 'scared' },
-      { q: 'The theater breaks and Buster Moon loses it. How does Buster feel?', a: 'sad' },
+      { q: 'Meena is nervous about singing on stage. How does Meena feel?', a: 'scared' },
+      { q: 'The theater breaks and Buster Moon loses his theater. How does Buster feel?', a: 'sad' },
       { q: 'Meena sings loud and strong for the crowd. How does she feel?', a: 'proud' },
       { q: 'The new theater opens. How does Buster feel?', a: 'happy' }] },
     { id: 'trolls', title: 'Trolls', e: '🌈', qs: [
