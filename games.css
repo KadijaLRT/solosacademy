@@ -117,3 +117,10 @@
 .slot.big.huge .grp { font-size: 15px; max-width: 108px; }
 .tile.sm.xs { width: 54px; height: 54px; }
 .tile.sm.xs b.em { font-size: 28px; }
+
+/* less reading for the grown-up view */
+.lite-hide { display: none; }
+.lite-hide.lite-show { display: block; }
+.info { border: 2px solid var(--ink, #2b2250); background: #fff; color: var(--ink, #2b2250); border-radius: 50%; width: 28px; height: 28px; font-size: 15px; line-height: 1; padding: 0; cursor: pointer; margin: 2px 0; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px 14px; font-weight: 800; font-size: 18px; margin: 6px 0; }
+.nextstop { font-size: 18px; }

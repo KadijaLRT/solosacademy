@@ -25,10 +25,11 @@
     if (m == null) return 1;
     return m < 30 ? 0 : m < 42 ? 1 : m < 54 ? 2 : m < 66 ? 3 : 4;
   };
-  /* boost: how many stages ahead (0, 1, or 2). Stored as state.gameCfg.boost. Default is 1. */
+  /* boost: how many stages ahead (0, 1, or 2). Stored as state.gameCfg.boost. Default is 0:
+     she starts at her age and each section moves up by itself as she masters it (state.adapt). */
   T.boost = function (state) {
     const b = state.gameCfg && state.gameCfg.boost;
-    return b === '0' ? 0 : b === '2' ? 2 : 1;
+    return b === '1' ? 1 : b === '2' ? 2 : 0;
   };
   T.level = function (state) { return Math.min(4, T.base(state) + T.boost(state)); };
   T.ageText = function (state) {

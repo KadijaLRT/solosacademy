@@ -115,9 +115,9 @@ Re-upload the folder. Change `CACHE` in `sw.js` to a new name each time (for exa
 
 Your screen says "Hi Kadija!" (change it in Settings, Your name). The first time you switch to Solana's view the app makes you set a PIN. In her view the grown-up button is faded and needs a press and hold of about 1.5 seconds, then the PIN. A quick tap does nothing.
 
-## Her level (age and challenge)
+## Her level (starts at her age, moves up as she learns)
 
-The app reads her birth month (Settings) and sets a base stage, then moves her ahead of it. Game settings, "Her level", has three choices: her age, 1 level ahead (default), or 2 levels ahead. Level 0 is about age 2 and level 4 is age 6 and up. Higher levels unlock Sound it (first and last letters of words), Add it (adding, then taking away), numbers to 20, more colors and shapes, longer words to spell, a listening sentence for unit words, and a short Spanish sentence after each right Spanish answer. The Today tab shows her stage and a progress summary, and the question ladder starts higher too. Solana cannot read yet, so every prompt is spoken, with big picture cues and icon buttons.
+The app reads her birth month (Settings) and starts her at the level for her age. Level 0 is about age 2 and level 4 is age 6 and up. Each section (letters, numbers, colors, shapes, unit words) then moves up on its own when she masters most of what that level asks (3 right answers per piece, about 80 percent of the pieces; for letters 5, 10, 16, then 22 letters). A level-up unlocks more: Sound it (first and last letters), Add it (adding, then taking away), numbers to 20, more colors and shapes, longer words to spell, a listening sentence for unit words, and a short Spanish sentence after each right Spanish answer. She hears "You are growing! New games for you!" and you see the level-ups in Game settings. Game settings, Start point, can start every section one or two levels higher. Solana cannot read yet, so every prompt is spoken, with big picture cues and icon buttons.
 
 ## Greetings
 
@@ -126,3 +126,7 @@ Solana hears "Hello Solana! Let's learn!" and you hear "Hello Kadija! Here's Sol
 ## Changing the unit
 
 Theme tab (grown-up view), tap the unit at the top: Trees, Water, Community Helpers, How Things Move, or Buildings. A 📅 means the unit has a full 6-week daily plan. For a new unit, set its start date in Settings (the label shows the unit name) so the weeks line up with her class.
+
+## Less reading (grown-up view)
+
+Because long text is hard to scan, the grown-up view hides helper paragraphs behind a small ⓘ button (tap it to read). Today leads with a "Next stop" card and a one-line progress summary, and the parent move of the day is collapsed to its title. Turn it off in Settings, Look, Less reading.

@@ -37,6 +37,8 @@
       if (raw) { const o = JSON.parse(raw); Object.keys(o).forEach((k) => { s[k] = o[k]; }); }
     } catch (e) { /* storage may be blocked; app still works for this session */ }
     if (!s.activities) s.activities = JSON.parse(JSON.stringify(S.activityDefaults));
+    if (!s.boxingAdded) { s.boxingAdded = true; if (Array.isArray(s.activities) && !s.activities.some((a) => a.id === 'a-boxing' || /boxing/i.test(a.name))) { const b = S.activityDefaults.find((a) => a.id === 'a-boxing'); if (b) s.activities.push(JSON.parse(JSON.stringify(b))); } }
+    if (!s.violinAdded) { s.violinAdded = true; if (Array.isArray(s.activities) && !s.activities.some((a) => a.id === 'a-violin' || /violin/i.test(a.name))) { const v = S.activityDefaults.find((a) => a.id === 'a-violin'); if (v) s.activities.push(JSON.parse(JSON.stringify(v))); } }
     if (!s.themeStart) s.themeStart = dkey();
     if (!s.stretchSet) { s.level = 'stretch'; s.stretchSet = true; } /* she is learning ahead of her age: start on the longer daily plan */
     return s;
@@ -416,11 +418,12 @@
   function progressLine() {
     const learned = Object.keys(state.learned).filter((k) => state.learned[k]).length + Object.keys(state.fmastered || {}).filter((k) => state.fmastered[k]).length;
     const mastered = Object.keys(state.letterWins || {}).filter((k) => state.letterWins[k] >= 3).length + Object.keys(state.gameWins || {}).filter((k) => state.gameWins[k] >= 3).length;
-    return '⭐ ' + starTotal() + ' stars · 📚 ' + learned + ' words learned · 🔤 ' + mastered + ' game pieces mastered · 🌈 ' + (state.rainbows || 0) + ' rainbows';
+    return '<span>⭐ ' + starTotal() + '</span><span>📚 ' + learned + '</span><span>🔤 ' + mastered + '</span><span>🌈 ' + (state.rainbows || 0) + '</span>';
   }
   function stageCard() {
     const lv = S.stage.level(state); const L = S.stage.LEVELS[lv]; const age = S.stage.ageText(state);
-    return '<div class="card note"><b>Hello ' + esc(state.parentName || 'there') + ', here’s ' + esc(state.nick || 'her') + '’s progress</b><p class="small" style="margin:6px 0">' + progressLine() + '</p><b>🚀 Her stage</b><p class="small" style="margin:6px 0 0">' + (age ? esc(age) + ' old. ' : 'Add her birth month in Settings. ') + 'Teaching at <b>' + L.name + '</b> (' + L.like + '), ahead of her age on purpose. Change it in the Games tab, Her level.</p></div>';
+    const sl = ['letters', 'numbers', 'colors', 'shapes', 'words'].map((k, i) => ['🔤', '🔢', '🎨', '🔷', '📖'][i] + ' L' + Math.min(4, lv + ((state.adapt || {})[k] || 0))).join(' ');
+    return '<div class="card note"><b>Hello ' + esc(state.parentName || 'there') + ', here’s ' + esc(state.nick || 'her') + '’s progress</b><div class="stats">' + progressLine() + '</div><div class="small">🚀 ' + (age ? esc(age) + ' old' : 'Add her birth month in Settings') + ' · starts at <b>' + L.name + '</b></div><div class="stats">' + sl + '</div></div>';
   }
   function viewToday() {
     const info = themeInfo(); const ids = LEVELS[state.level] || LEVELS.standard;
@@ -437,6 +440,8 @@
     if (state.unit && !S.themes.some((t) => t.id === state.unit)) { const un = S.units.find((x) => x.id === state.unit); if (un) h += '<div class="card note">Today’s show is <b>' + un.emoji + ' ' + esc(un.name) + '</b>. The Play tab uses its words. This daily plan still follows Trees until a plan for ' + esc(un.name) + ' is added.</div>'; }
     if (info.over) h += '<div class="card note">The 6 ' + esc(info.th.name.toLowerCase()) + ' weeks are complete. You can repeat week 6, or ask her teacher for the next theme. See the Theme tab.</div>';
     if (info.pre) h += '<div class="card note">Your theme starts on ' + esc(startFor(info.th.id)) + '. This is a preview of week 1.</div>';
+    const nextId = ids.find((b) => !today[b]);
+    if (nextId) h += '<div class="card good nextstop"><b>👉 Next stop</b><div>' + BLOCKS[nextId].e + ' ' + BLOCKS[nextId].t + ' · ' + BLOCKS[nextId].m + ' min</div></div>';
     h += stageCard();
     h += S.parent.moveCard(ctx, info.diff);
     ids.forEach((b) => {
@@ -645,13 +650,13 @@
 
   /* ---------- GROW ---------- */
   function viewGrow() {
-    let h = '<h2>Grow</h2><div class="chips">' + [['miles', '✅ Milestones'], ['guide', '🌱 Parent guide'], ['log', '📈 Daily log'], ['map', '🗺️ Growth map to 10'], ['goals', '🎓 Big goals']].map((t) =>
+    let h = '<h2>Grow</h2><div class="chips">' + [['miles', '✅ Milestones'], ['guide', '🌱 Parent guide'], ['log', '📈 Daily log'], ['map', '🗺️ Growth map to 10']].map((t) =>
       '<button class="chip" aria-pressed="' + (ui.gtab === t[0]) + '" data-act="gtab" data-t="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>';
     if (ui.gtab === 'miles') return h + growMilestones();
     if (ui.gtab === 'guide') return h + S.parent.viewGuide(ctx);
     if (ui.gtab === 'log') return h + S.fun.viewLog(ctx);
     if (ui.gtab === 'map') return h + growMap();
-    return h + growGoals();
+    return h + growMap();
   }
   function growMilestones() {
     if (!ui.mband) ui.mband = defaultMilestoneBand();
@@ -677,18 +682,6 @@
     });
     return h;
   }
-  function growGoals() {
-    const B = S.bigGoals; const li = (a) => '<ul>' + a.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>';
-    let h = '<div class="card hero"><b style="font-size:20px">Early graduation and a full scholarship</b><p>' + esc(B.intro) + '</p></div>';
-    h += '<details class="acc" open><summary>The honest picture on a free ride</summary><div class="acc-body">' + li(B.freeRide) + '</div></details>';
-    h += '<details class="acc"><summary>Routes that can get close to free</summary><div class="acc-body">' + B.routes.map((r) => '<div class="say"><b>' + esc(r.t) + '</b><br>' + esc(r.d) + '</div>').join('') + '</div></details>';
-    h += '<details class="acc"><summary>Early graduation and college credit</summary><div class="acc-body">' + li(B.early) + '</div></details>';
-    h += '<details class="acc"><summary>What to build between now and 10</summary><div class="acc-body">' + li(B.habits) + '</div></details>';
-    h += '<details class="acc"><summary>Timeline</summary><div class="acc-body">' + B.timeline.map((t) => '<div class="say"><b>' + esc(t.when) + '</b><br>' + esc(t.what) + '</div>').join('') + '</div></details>';
-    h += '<details class="acc"><summary>Sources</summary><div class="acc-body"><ul>' + B.sources.map((s) => '<li><a href="' + esc(s.u) + '" target="_blank" rel="noopener">' + esc(s.t) + '</a></li>').join('') + '</ul><p class="small muted">Checked October 29, 2026. Rules and amounts change, so confirm with each school and the state. This is information, not legal or financial advice.</p></div></details>';
-    return h;
-  }
-
   /* ---------- ACTIVITIES ---------- */
   const STATUS = { active: ['Active now', 'green'], next: ['Next up', 'sun'], planned: ['Planned', ''], paused: ['Paused', 'coral'], done: ['Finished', ''] };
   function whenText(a) {
@@ -740,34 +733,41 @@
   function viewSettings() {
     const sel = (k, opts) => '<select data-set="' + k + '">' + opts.map((o) => '<option value="' + o[0] + '"' + (String(state[k]) === String(o[0]) ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>';
     const standalone = window.navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
-    let h = '<h2>Settings</h2>';
-    h += '<div class="card"><b>About your child</b><p class="small muted">Stays on this device only. Used to show the right age stage.</p>' +
-      '<label class="f" for="s-me">Your name (shown on your screen)</label><input type="text" id="s-me" data-set="parentName" value="' + esc(state.parentName) + '" maxlength="30" autocomplete="off"><label class="f" for="s-nick">Her nickname (optional)</label><input type="text" id="s-nick" data-set="nick" value="' + esc(state.nick) + '" maxlength="30" autocomplete="off">' +
+    let hs = ''; let hm = '';
+    /* Solana's settings */
+    hs += '<div class="card"><b>👧 About her</b><p class="small muted">Stays on this device only. The birth month sets her starting level.</p>' +
+      '<label class="f" for="s-nick">Her nickname</label><input type="text" id="s-nick" data-set="nick" value="' + esc(state.nick) + '" maxlength="30" autocomplete="off">' +
       '<label class="f" for="s-birth">Birth month and year</label><input type="month" id="s-birth" data-set="birth" value="' + esc(state.birth) + '"></div>';
-    h += '<div class="card"><b>Learning plan</b>' +
-      '<label class="f">Daily time</label>' + sel('level', [['light', 'Light, about 17 min'], ['standard', 'Standard, about 22 min'], ['stretch', 'Stretch, about 32 min']]) +
-      '<p class="small muted">Short, playful sessions work best at this age, with conversation all day long. The CDC lists attention for 5 to 10 minutes as a milestone at age 5.</p>' +
+    hs += '<div class="card"><b>🌍 Languages and voice</b>' +
       '<label class="f">Second-language mode</label>' + sel('mode', [['focus', 'Focus: one language at a time (recommended)'], ['tour', 'Tour: a new language each day']]) +
       '<label class="f">Focus language</label>' + sel('focusLang', S.langs.map((l) => [l.id, l.flag + ' ' + l.name])) +
       '<p class="small muted">Tip: switch the focus language each month, or keep one going for longer. Real conversation with native speakers helps most.</p>' +
-      '<label class="f" for="s-theme">' + esc(planTheme().name) + ' start date</label><input type="date" id="s-theme" data-set="themeStart" value="' + esc(startFor(planTheme().id)) + '">' +
       '<label class="f">Voice speed</label>' + sel('rate', [[0.6, 'Slow'], [0.8, 'Gentle (default)'], [1, 'Normal']]) +
       '<p><button class="btn alt small" data-act="test-voice">🔊 Test voice</button></p></div>';
-    h += '<div class="card"><b>Profiles</b><p class="small muted">Two views on this device: the parent view (everything) and ' + esc(state.nick || 'your child') + '’s view (Play, Words, Feelings, Stickers). A PIN keeps the parent view closed when you switch to the child view. It is a child lock, not strong security, and both views share the same saved progress on this device.</p>' +
-      '<p>Parent PIN: <b>' + (state.pinHash ? 'set' : 'not set') + '</b></p><div class="row"><button class="btn small" data-act="pin-set-open">' + (state.pinHash ? 'Change PIN' : 'Set a PIN') + '</button>' + (state.pinHash ? '<button class="btn alt small" data-act="pin-remove">Remove PIN</button>' : '') + '</div>' +
-      '<p style="margin-bottom:0"><button class="btn" data-act="role-toggle">Switch to ' + esc(state.nick || 'child') + '’s view</button></p></div>';
-    h += '<div class="card"><b>Look</b><label class="f">Style</label>' + sel('look', [['retro', 'Retro preschool TV everywhere (default)'], ['mixed', 'Retro for kid screens only'], ['classic', 'Classic calm look']]) +
-      '<p class="small muted">Kid screens are Words and Play. Parent screens keep the calm look in the middle option.</p></div>';
-    h += '<div class="card"><b>Voice pack (send recordings and game settings to another device)</b><p class="small muted">Your voice clips and Game setup choices live on this device only. To put them on Solana’s device: 1. Tap Make voice pack here. 2. Tap Share and send it to her device (AirDrop or Messages). 3. On her device, switch to the grown-up view, open Settings, tap Import, and pick the file. This device has ' + recSet.size + (recSet.size === 1 ? ' recording' : ' recordings') + '. The file stays between your own devices.</p>' +
+    hs += '<div class="card"><b>🌳 Class unit</b><label class="f" for="s-theme">' + esc(planTheme().name) + ' start date</label><input type="date" id="s-theme" data-set="themeStart" value="' + esc(startFor(planTheme().id)) + '">' +
+      '<p class="small muted">Change the unit itself in the Theme tab.</p></div>';
+    hs += '<div class="card"><b>🎈 Games and levels</b><p class="small muted">What she plays, her start level, and practice live in Game settings.</p><p style="margin-bottom:0"><button class="btn" data-act="go" data-to="games">Open Game settings</button></p></div>';
+    hs += '<div class="card"><b>🎨 How her screens look</b><label class="f">Style</label>' + sel('look', [['retro', 'Retro preschool TV everywhere (default)'], ['mixed', 'Retro for kid screens only'], ['classic', 'Classic calm look']]) +
+      '<p class="small muted">Kid screens are Games, Play, Words, Feelings, and Stickers. Parent screens keep the calm look in the middle option.</p></div>';
+    hs += '<div class="card"><b>Voice pack (send recordings and game settings to another device)</b><p class="small muted">Your voice clips and Game setup choices live on this device only. To put them on Solana’s device: 1. Tap Make voice pack here. 2. Tap Share and send it to her device (AirDrop or Messages). 3. On her device, switch to the grown-up view, open Settings, tap Import, and pick the file. This device has ' + recSet.size + (recSet.size === 1 ? ' recording' : ' recordings') + '. The file stays between your own devices.</p>' +
       '<div class="row"><button class="btn alt" data-act="pack-make">' + (ui.pack ? 'Make it again' : 'Make voice pack') + '</button><label class="btn alt" style="display:inline-flex;align-items:center;cursor:pointer">Import<input id="packFile" type="file" accept="application/json,.json" hidden></label></div>' +
       (ui.pack ? '<p class="small">' + 'Ready: ' + ui.pack.n + (ui.pack.n === 1 ? ' recording' : ' recordings') + ' and your game settings.' + '</p>' + '<div class="row"><button class="btn sun" data-act="pack-share">📤 Share</button><button class="btn alt" data-act="pack-save">⬇ Save file</button></div>' : '') + '</div>';
-    h += '<div class="card"><b>Backup</b><p class="small muted">Saves progress, settings, and activities as a file. Recordings are stored in this browser and are not in the backup.</p>' +
+    /* My settings */
+    hm += '<div class="card"><b>👤 About me</b><label class="f" for="s-me">Your name (shown on your screen)</label><input type="text" id="s-me" data-set="parentName" value="' + esc(state.parentName) + '" maxlength="30" autocomplete="off"></div>';
+    hm += '<div class="card"><b>📅 My daily plan</b><label class="f">Daily time</label>' + sel('level', [['light', 'Light, about 17 min'], ['standard', 'Standard, about 22 min'], ['stretch', 'Stretch, about 32 min']]) +
+      '<p class="small muted">Short, playful sessions work best at this age, with conversation all day long. The CDC lists attention for 5 to 10 minutes as a milestone at age 5.</p>' +
+      '<label class="f">Less reading</label>' + sel('lite', [['on', 'On: tap ⓘ for details'], ['off', 'Off: show all text']]) + '</div>';
+    hm += '<div class="card"><b>Profiles</b><p class="small muted">Two views on this device: the parent view (everything) and ' + esc(state.nick || 'your child') + '’s view (Play, Words, Feelings, Stickers). A PIN keeps the parent view closed when you switch to the child view. It is a child lock, not strong security, and both views share the same saved progress on this device.</p>' +
+      '<p>Parent PIN: <b>' + (state.pinHash ? 'set' : 'not set') + '</b></p><div class="row"><button class="btn small" data-act="pin-set-open">' + (state.pinHash ? 'Change PIN' : 'Set a PIN') + '</button>' + (state.pinHash ? '<button class="btn alt small" data-act="pin-remove">Remove PIN</button>' : '') + '</div>' +
+      '<p style="margin-bottom:0"><button class="btn" data-act="role-toggle">Switch to ' + esc(state.nick || 'child') + '’s view</button></p></div>';
+    hm += '<div class="card"><b>Backup</b><p class="small muted">Saves progress, settings, and activities as a file. Recordings are stored in this browser and are not in the backup.</p>' +
       '<div class="row"><button class="btn alt" data-act="backup">Download backup</button><label class="btn alt" style="display:inline-flex;align-items:center;cursor:pointer">Restore<input id="restoreFile" type="file" accept="application/json" hidden></label></div>' +
       '<p><button class="btn coral small" data-act="reset">Erase everything on this device</button></p></div>';
-    h += '<div class="card note"><b>Privacy</b><p class="small">No accounts, ads, or analytics. Everything is saved on this device. The only thing that uses the internet is the optional Groq story button on the Play tab, which sends just a word and the unit name. Clearing Safari website data will erase it, so download a backup now and then.</p></div>';
-    h += '<div class="card"><b>Install on iPad or iPhone</b><p class="small">' + (standalone ? 'You are running it as an app. 🎉' : 'Open this page in Safari, tap the Share button, then "Add to Home Screen".') + '</p></div>';
-    h += '<p class="small muted center">Solo’s Academy v1. Word sounds are approximations. Please have a native speaker check them.</p>';
-    return h;
+    hm += '<div class="card note"><b>Privacy</b><p class="small">No accounts, ads, or analytics. Everything is saved on this device. The only thing that uses the internet is the optional Groq story button on the Play tab, which sends just a word and the unit name. Clearing Safari website data will erase it, so download a backup now and then.</p></div>';
+    hm += '<div class="card"><b>Install on iPad or iPhone</b><p class="small">' + (standalone ? 'You are running it as an app. 🎉' : 'Open this page in Safari, tap the Share button, then "Add to Home Screen".') + '</p></div>';
+    const tab = ui.sset === 'me' ? 'me' : 'solana';
+    const seg = '<div class="chips seg"><button class="chip" aria-pressed="' + (tab === 'solana') + '" data-act="sset" data-t="solana">👧 ' + esc(state.nick || 'Solana') + '</button><button class="chip" aria-pressed="' + (tab === 'me') + '" data-act="sset" data-t="me">👤 Me</button></div>';
+    return '<h2>Settings</h2>' + seg + (tab === 'me' ? hm : hs) + '<p class="small muted center">Solo’s Academy v1. Word sounds are approximations. Please have a native speaker check them.</p>';
   }
   function openOnboarding() {
     openModal('<div class="center"><div class="big-em">✈️</div><h2 style="margin-top:0">Welcome aboard</h2></div><p>Two optional details help the app show the right stage. They stay on this device only. The first time you tap the 👧 button to hand the device to ' + 'your child, the app asks you to set a PIN.</p>' +
@@ -807,12 +807,22 @@
     const tabs = isChild() ? KID_TABS : PARENT_TABS; const nav = $('#tabs');
     nav.innerHTML = tabs.map((t) => '<button data-act="go" data-to="' + t[0] + '"><span>' + t[1] + '</span>' + t[2] + '</button>').join('');
   }
+  /* Less reading for the grown-up view: long helper text hides behind a small ⓘ button. */
+  function liteify() {
+    $$('#view p.muted, #view p.small.muted').forEach((el) => {
+      if (el.closest('details, .modal, .keep') || el.dataset.keep) return;
+      el.classList.add('lite-hide');
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'info'; b.dataset.act = 'info'; b.setAttribute('aria-label', 'Show more info'); b.textContent = 'ⓘ';
+      el.parentNode.insertBefore(b, el);
+    });
+  }
   function render(keepScroll) {
     const r = route(); const y = window.scrollY;
     stopBreath();
     applyLook(r);
     renderTabs();
     $('#view').innerHTML = ROUTES[r]();
+    if (!isChild() && state.lite !== 'off') liteify();
     $$('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.to === r));
     updateHeader();
     window.scrollTo(0, keepScroll ? y : 0);
@@ -832,6 +842,8 @@
     const a = el.dataset.act; const d = el.dataset;
     switch (a) {
       case 'go': closeModal(); go(d.to); break;
+      case 'sset': ui.sset = d.t; render(false); break;
+      case 'info': { const n = el.nextElementSibling; if (n) n.classList.toggle('lite-show'); break; }
       case 'modal-close': ui.afterPin = false; closeModal(); break;
       case 'toggle-block': {
         e.preventDefault(); e.stopPropagation();

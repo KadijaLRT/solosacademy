@@ -17,7 +17,7 @@
   const SEC_GAMES = { letters: ['pop', 'drag', 'build'], numbers: ['pop', 'drag', 'count', 'sing'], colors: ['pop', 'drag'], shapes: ['pop', 'drag'], words: ['pop', 'drag', 'build', 'sing'] };
   /* Higher levels unlock more games (Sound it and Add it start at level 2). */
   function gamesFor(ctx, sec) {
-    const l = lvl(ctx); const base = SEC_GAMES[sec].slice();
+    const l = LV(ctx, sec); const base = SEC_GAMES[sec].slice();
     if (sec === 'letters' && l >= 2) base.splice(2, 0, 'sound');
     if (sec === 'numbers' && l >= 2) base.splice(3, 0, 'add');
     return base;
@@ -25,6 +25,8 @@
   const SUFFIX = { letters: 'L', words: 'W', numbers: 'N', colors: 'C', shapes: 'S' };
 
   const lvl = (ctx) => SA.stage.level(ctx.state);
+  /* Level for one section: her starting level plus the levels she has earned there. */
+  function LV(ctx, sec) { return Math.min(4, lvl(ctx) + (((ctx.state.adapt || {})[sec]) || 0)); }
   function shuffle(a) { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = b[i]; b[i] = b[j]; b[j] = t; } return b; }
   /* Pick n items; pictures stay different from each other when the items have emoji. */
   function pick(a, n) {
@@ -46,17 +48,18 @@
     if (c.lang !== 'tl') c.lang = 'en';
     if (['5', '10', '20'].indexOf(c.range) < 0) c.range = 'auto';
     if (c.easy !== '1' && c.easy !== '0') c.easy = 'auto';
-    if (c.boost !== '0' && c.boost !== '2') c.boost = '1';
+    if (!st.adaptSet) { c.boost = '0'; st.adaptSet = true; } /* start at her age; sections move up as she masters them */
+    if (c.boost !== '1' && c.boost !== '2') c.boost = '0';
     c.practice = !!c.practice;
     return c;
   }
   function sync(ctx, g) {
-    const c = cfg(ctx); g.lang = c.lang; g.range = c.range; g.easy = easyOn(ctx); g.practice = c.practice;
+    const c = cfg(ctx); g.lang = c.lang; g.range = c.range; g.easy = easyOn(ctx, g.sec); g.practice = c.practice;
     if (!c.secs[g.sec]) g.sec = SECS.filter((k) => c.secs[k])[0];
   }
   const RANGE_BY_LEVEL = [5, 10, 20, 20, 20];
-  function rangeMax(ctx) { const r = cfg(ctx).range; return r === 'auto' ? RANGE_BY_LEVEL[lvl(ctx)] : +r; }
-  function easyOn(ctx) { const e = cfg(ctx).easy; return e === 'auto' ? lvl(ctx) < 3 : e === '1'; }
+  function rangeMax(ctx) { const r = cfg(ctx).range; return r === 'auto' ? RANGE_BY_LEVEL[LV(ctx, 'numbers')] : +r; }
+  function easyOn(ctx, sec) { const e = cfg(ctx).easy; return e === 'auto' ? LV(ctx, sec || 'letters') < 3 : e === '1'; }
   const previewing = (ctx) => !ctx.isChild() && !!GS(ctx).preview;
 
   /* ---------- sound effects (tiny synth, no files) ---------- */
@@ -95,8 +98,8 @@
   function numItems(ctx) { const max = rangeMax(ctx); return SA.numbers.filter((x) => x.n <= max).map((x) => ({ id: String(x.n), n: x.n, en: x.en, es: x.es })); }
   const COLORS_BY_LEVEL = [6, 9, 11, 11, 11];
   const SHAPES_BY_LEVEL = [4, 6, 8, 10, 10];
-  const colorItems = (ctx) => SA.colors.slice(0, COLORS_BY_LEVEL[lvl(ctx)]).map((x) => ({ id: x.id, en: x.en, es: x.es, c: x.c }));
-  const shapeItems = (ctx) => SA.shapes.slice(0, SHAPES_BY_LEVEL[lvl(ctx)]).map((x) => ({ id: x.id, en: x.en, es: x.es, g: x.g || 'm', c: x.c, svg: x.svg }));
+  const colorItems = (ctx) => SA.colors.slice(0, COLORS_BY_LEVEL[LV(ctx, 'colors')]).map((x) => ({ id: x.id, en: x.en, es: x.es, c: x.c }));
+  const shapeItems = (ctx) => SA.shapes.slice(0, SHAPES_BY_LEVEL[LV(ctx, 'shapes')]).map((x) => ({ id: x.id, en: x.en, es: x.es, g: x.g || 'm', c: x.c, svg: x.svg }));
   function itemsFor(ctx, g) {
     switch (g.sec) { case 'letters': return letterItems(); case 'numbers': return numItems(ctx); case 'colors': return colorItems(ctx); case 'shapes': return shapeItems(ctx); default: return wordItems(ctx); }
   }
@@ -138,7 +141,7 @@
   /* Say what she got right, then praise her in English (also shown on screen). */
   /* Level 2 and up: after the word, a short Spanish sentence so she hears the word used. */
   function esSentence(ctx, g, it) {
-    if (lvl(ctx) < 2) return '';
+    if (LV(ctx, g.sec) < 2) return '';
     if (g.sec === 'colors') return ' Es ' + it.es + '.';
     if (g.sec === 'numbers') return ' Es el número ' + it.es + '.';
     if (g.sec === 'shapes') return ' Es ' + (it.g === 'f' ? 'una ' : 'un ') + it.es + '.';
@@ -210,6 +213,23 @@
     else { st.gameWins = st.gameWins || {}; st.gameWins[winKey(ctx, sec, id)] = was + 1; }
     ctx.save();
     if (was + 1 === 3) ctx.toast(sec === 'letters' ? '🌈 You know the letter ' + id + '!' : '🌈 You know ' + id + '!');
+    if (was + 1 === 3) checkLevelUp(ctx, sec);
+  }
+  /* She moves up in a section when she has mastered most of what that level asks. */
+  const LETTERS_TO_LEVEL = [5, 10, 16, 22];
+  function secNeeded(ctx, sec) {
+    if (sec === 'letters') return { items: letterItems(), need: LETTERS_TO_LEVEL[Math.min(3, LV(ctx, 'letters'))] };
+    const items = itemsFor(ctx, { sec, lang: 'en', range: cfg(ctx).range });
+    return { items, need: Math.max(3, Math.ceil(items.length * 0.8)) };
+  }
+  function checkLevelUp(ctx, sec) {
+    const st = ctx.state; if (LV(ctx, sec) >= 4) return;
+    const r = secNeeded(ctx, sec); const got = r.items.filter((x) => winsOf(ctx, sec, x.id) >= 3).length;
+    if (got < r.need) return;
+    st.adapt = st.adapt || {}; st.adapt[sec] = (st.adapt[sec] || 0) + 1;
+    st.levelLog = st.levelLog || []; st.levelLog.unshift({ date: ctx.dkey(), sec, level: LV(ctx, sec) }); st.levelLog = st.levelLog.slice(0, 20);
+    ctx.save(); ctx.toast('⬆️ New level!');
+    setTimeout(() => F().say(ctx, 'You are growing! New games for you!', 'en-US', false, true), 1800);
   }
   /* Practice mode: aim at what she has not mastered yet (fewer than 3 right answers). */
   function needyOf(ctx, g, items) {
@@ -289,12 +309,15 @@
   function settingsView(ctx) {
     const f = F(); const u = f.unitOf(ctx); const c = cfg(ctx); const sample = wordItems(ctx)[0]; const es = focus(ctx) === 'es';
     const on = (cond) => String(!!cond);
-    const grp = (label, hint, body) => '<div class="srow"><div class="slabel">' + label + '</div>' + body + (hint ? '<div class="small muted">' + hint + '</div>' : '') + '</div>';
+    const grp = (label, hint, body) => '<div class="srow"><div class="slabel">' + label + '</div>' + body + (hint ? '<p class="small muted">' + hint + '</p>' : '') + '</div>';
     const lv = lvl(ctx); const base = SA.stage.base(ctx.state); const age = SA.stage.ageText(ctx.state); const LI = SA.stage.LEVELS;
-    let h = '<div class="card"><b>Her level</b><p class="small" style="margin:6px 0">' + (age ? 'She is ' + ctx.esc(age) + ' old, which is ' + LI[base].like + '.' : 'Add her birth month in Settings so the app can match her age.') + ' Right now she plays <b>' + LI[lv].name + '</b> (' + LI[lv].like + '). ' + ctx.esc(LI[lv].does) + '</p>' +
-      grp('Challenge', 'Auto follows her age. Ahead moves her up one or two levels.', chips(ctx, [['0', 'Her age'], ['1', '1 level ahead'], ['2', '2 levels ahead']], c.boost, 'gboost', 'b')) +
+    let h = '<div class="card"><b>Her level</b><div class="stats"><span>🎂 ' + (age ? ctx.esc(age) : 'add birth month') + '</span><span>🚀 starts at ' + LI[lv].name + '</span></div>' +
+      '<div class="stats">' + SECS.map((k) => '<span title="' + k + '">' + secLabel(k, u).split(' ')[0] + ' L' + LV(ctx, k) + '</span>').join('') + '</div>' +
+      '<p class="small muted">She starts at her age. Each section moves up by itself when she masters most of it (3 right answers each). ' + ctx.esc(LI[lv].does) + '</p>' +
+      ((ctx.state.levelLog || []).length ? '<p class="small keep"><b>Level-ups:</b> ' + (ctx.state.levelLog || []).slice(0, 4).map((x) => ctx.esc(x.date.slice(5)) + ' ' + ctx.esc(({ letters: 'Letters', numbers: 'Numbers', colors: 'Colors', shapes: 'Shapes', words: 'Unit words' })[x.sec]) + ' to L' + x.level).join(', ') + '</p>' : '') +
+      grp('Start point', 'Her age is the default. Ahead starts every section one or two levels higher.', chips(ctx, [['0', 'Her age'], ['1', '1 ahead'], ['2', '2 ahead']], c.boost, 'gboost', 'b')) +
       '<details class="acc"><summary>What each level teaches</summary><div class="acc-body">' + LI.map((x) => '<p class="small"><b>' + x.name + '</b> (' + x.like + '): ' + ctx.esc(x.does) + '</p>').join('') + '</div></details></div>';
-    h += '<div class="card"><b>What she plays</b><p class="small muted">Turn sections on or off. Solana only sees the ones that are on.</p><div class="chips">' +
+    h += '<div class="card"><b>What she plays</b><p class="small muted">Solana only sees the sections that are on.</p><div class="chips">' +
       SECS.map((k) => '<button class="chip" aria-pressed="' + on(c.secs[k]) + '" data-act="gtoggle" data-s="' + k + '">' + (c.secs[k] ? '✓ ' : '') + secLabel(k, u) + '</button>').join('') + '</div>' +
       '<div class="small muted">Unit words follow the show you picked in the Theme tab.</div></div>';
     h += '<div class="card"><b>How she plays</b>' +
@@ -305,7 +328,7 @@
       grp('Practice', 'Aim the games at letters, numbers, and words she has not mastered yet.', chips(ctx, [['0', '🎲 Everything'], ['1', '🎯 What she is missing']], c.practice ? '1' : '0', 'gprac', 'p')) +
       grp('Spoken instructions', 'A voice explains how to play the first time she opens each game.', chips(ctx, [['1', '🔊 On'], ['0', '🔇 Off']], helpOn(ctx) ? '1' : '0', 'ghelp', 'v')) + '</div>';
     h += '<div class="card center"><button class="btn sun" data-act="gpreview">👀 Try Solana’s games</button><p class="small muted" style="margin-bottom:0">Nothing you do in the preview counts toward her stars or progress.</p></div>';
-    h += '<div class="card note"><b>Her device</b><p class="small" style="margin-bottom:0">These choices are saved on this device. To copy them to Solana’s device, make a voice pack in Settings and import it there. It carries your recordings and these game settings.</p></div>';
+    h += '<div class="card note"><b>Her device</b><p class="small muted" style="margin-bottom:0">These choices are saved on this device. To copy them to Solana’s device, make a voice pack in Settings and import it there. It carries your recordings and these game settings.</p></div>';
     return h + progressCard(ctx);
   }
 
@@ -360,7 +383,7 @@
   function newPop(ctx, g) {
     const used = g.pop ? g.pop.used : []; const n = g.pop ? g.pop.n : 0;
     if (g.game === 'sound') {
-      const L = letterItems(); const useEnd = lvl(ctx) >= 3 && Math.random() < 0.5; let target; let pic; let word; let end;
+      const L = letterItems(); const useEnd = LV(ctx, 'letters') >= 3 && Math.random() < 0.5; let target; let pic; let word; let end;
       if (useEnd) {
         const w = pick(SA.spellWords.filter((x) => used.indexOf('e:' + x.w) < 0), 1)[0] || pick(SA.spellWords, 1)[0];
         target = L.find((x) => x.l === w.w.slice(-1).toUpperCase()); pic = w.e; word = w.w; end = true; used.push('e:' + w.w);
@@ -373,7 +396,7 @@
       g.lock = false; g.tok++; return;
     }
     if (g.game === 'add') {
-      const max = Math.min(rangeMax(ctx), lvl(ctx) >= 4 ? 20 : lvl(ctx) >= 3 ? 10 : 5); const sub = lvl(ctx) >= 3 && Math.random() < 0.4;
+      const NL = LV(ctx, 'numbers'); const max = Math.min(rangeMax(ctx), NL >= 4 ? 20 : NL >= 3 ? 10 : 5); const sub = NL >= 3 && Math.random() < 0.4;
       let a; let b; let ans;
       if (sub) { a = ri(2, max); b = ri(1, a - 1); ans = a - b; } else { a = ri(1, Math.max(1, max - 1)); b = ri(1, Math.max(1, max - a)); ans = a + b; }
       const N = numItems(ctx); const one = (k) => N.find((x) => x.n === k) || SA.numbers[k - 1] && { id: String(k), n: k, en: SA.numbers[k - 1].en, es: SA.numbers[k - 1].es };
@@ -396,7 +419,7 @@
     g.pop = { n, used: used.concat([target.id]), target, opts: shuffle([target].concat(others)) };
     g.lock = false; g.tok++;
   }
-  const sentenceOn = (ctx, g, t) => g.sec === 'words' && lvl(ctx) >= 2 && !!(g.lang === 'tl' ? (focus(ctx) === 'es' ? t.spEs : '') : t.sp);
+  const sentenceOn = (ctx, g, t) => g.sec === 'words' && LV(ctx, 'words') >= 2 && !!(g.lang === 'tl' ? (focus(ctx) === 'es' ? t.spEs : '') : t.sp);
   function popPrompt(ctx, g, t) {
     const nm = itemName(ctx, g, t); const es = esOn(ctx, g);
     if (g.game === 'sound') { const p = g.pop; return 'Which letter does ' + p.word + (p.end ? ' end' : ' start') + ' with?'; }
@@ -461,7 +484,7 @@
       }
       g.board = { kind, tiles, slots, filled: {}, word: null, done: false };
     } else if (kind === 'build') {
-      const L = lvl(ctx); const lo = L >= 3 ? 5 : L === 2 ? 4 : 3; const hi = L >= 3 ? 6 : L === 2 ? 5 : 4;
+      const L = LV(ctx, g.sec); const lo = L >= 3 ? 5 : L === 2 ? 4 : 3; const hi = L >= 3 ? 6 : L === 2 ? 5 : 4;
       const okLen = (w) => /^[a-z]+$/i.test(w) && w.length >= lo && w.length <= hi;
       const list = g.sec === 'words' ? wordItems(ctx).filter((w) => okLen(w.en)).map((w) => ({ w: w.en.toLowerCase(), e: w.e })) : [];
       const bank = SA.spellWords.concat(SA.spellWords2 || []);

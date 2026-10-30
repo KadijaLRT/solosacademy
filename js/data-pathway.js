@@ -158,7 +158,9 @@
     { id: 'a-soccer', name: 'Soccer', type: 'sport', status: 'done', when: '', note: 'Finished. Great start.', lang: 'Count goals and name colors of the jerseys in your focus language.' },
     { id: 'a-gym', name: 'Gymnastics', type: 'sport', status: 'next', when: '', note: 'Next sport.', lang: 'Count rolls and name body parts in your focus language.' },
     { id: 'a-theater', name: 'Theater', type: 'art', status: 'planned', when: '2027-01', note: 'Starts January 2027.', lang: 'Practice lines and songs in your focus language for fun.' },
-    { id: 'a-horse', name: 'Horseback riding', type: 'sport', status: 'planned', when: 'age4', note: 'Planned for when she turns 4. Use a certified riding helmet (ASTM/SEI) and a program that matches her age.', lang: 'Learn horse and farm words in your focus language.' }
+    { id: 'a-horse', name: 'Horseback riding', type: 'sport', status: 'planned', when: 'age4', note: 'Planned for when she turns 4. Use a certified riding helmet (ASTM/SEI) and a program that matches her age.', lang: 'Learn horse and farm words in your focus language.' },
+    { id: 'a-boxing', name: 'Boxing', type: 'sport', status: 'planned', when: '', note: 'Someday. Ask gyms about their minimum age; many youth programs start later than preschool, so a non-contact fitness or shadow-boxing class may be the first step. Choose a coach who works with young children.', lang: 'Count punches and name body parts in your focus language.' },
+    { id: 'a-violin', name: 'Violin, then try other instruments', type: 'art', status: 'planned', when: '', note: 'Start with violin, then rotate through instruments to see which one she loves. Violins come in very small fractional sizes, so ask a teacher or shop to fit one to her. Keep each try short and playful, and let her pick what to try next.', lang: 'Name the instrument and its sounds (high, low, loud, soft) in your focus language.' }
   ];
 
   SA.activityIdeas = [
