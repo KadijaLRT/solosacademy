@@ -70,6 +70,10 @@ Five sections, with the games each one has:
 - **Spoken instructions:** each game explains how to play out loud the first time it starts, and the ❓ button repeats it any time. The on/off switch is in Game settings. Spanish instructions play only when she is practicing Spanish.
 - **Please check:** the Spanish number, color, and shape words and the Spanish chant lines are standard, but ask a Spanish speaker to listen once.
 
+## Your voice in the games
+
+Settings, 👧 Solana tab, **Your voice in the games**: 23 short lines the games repeat most (praise, quick cheers, try again, starting, finishing). Record each once. Whenever a spoken line contains one of them, your clip plays in place of the phone voice; the rest of the line still uses the phone voice. Spanish and other languages are not replaced. Turn it off with the "Using my voice" chip. The clips travel in the voice pack.
+
 ## Voice pack (recordings and game settings between devices)
 
 Your voice recordings and your Game settings are saved on the device where you make them. The voice pack is one file that carries both to Solana's device. On your device: Settings, **Make voice pack**, then **Share** (AirDrop or Messages) to her device. On her device: switch to the grown-up view (PIN if you set one), go to Settings, tap **Import**, and pick the file. Importing adds clips, replaces any clip with the same name, and replaces the game settings. The file never leaves your own devices.

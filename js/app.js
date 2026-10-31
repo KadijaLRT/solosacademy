@@ -19,7 +19,7 @@
   const WBY = {}; S.words.forEach((w) => { WBY[w.id] = w; });
   const CATBY = {}; S.categories.forEach((c) => { CATBY[c.id] = c; });
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-  const APP_VERSION = 61;
+  const APP_VERSION = 64;
   const KID_TABS = [['games', '🎈', 'Games'], ['learn', '📚', 'Learn'], ['feel', '💛', 'Feelings']];
   const PARENT_TABS = [['today', '🏠', 'Today'], ['theme', '🏫', 'School'], ['grow', '🚀', 'Progress'], ['act', '🎭', 'Activities']];
 
@@ -191,19 +191,53 @@
     } catch (e) { return false; }
   }
   let nSeq = 0;
+  /* Your recorded phrases. A spoken line is cut into sentences; the longest run that matches a recording plays your clip, and the rest uses the phone voice, in order. */
+  let chainSeq = 0;
+  function momSegs(text, tag) {
+    if (state.momPhrases === false || !/^en/i.test(tag || '') || !recSet.size) return null;
+    const segs = String(text).match(/[^.!?]+[.!?]*\s*/g); if (!segs) return null;
+    const out = []; let i = 0; let hit = false;
+    while (i < segs.length) {
+      let found = null;
+      for (let j = segs.length; j > i; j--) { const k = SA.phraseKey(segs.slice(i, j).join('')); if (k && recSet.has(k)) { found = { k, j }; break; } }
+      if (found) { out.push({ clip: found.k }); i = found.j; hit = true; }
+      else { const last = out[out.length - 1]; if (last && last.text !== undefined) last.text += segs[i]; else out.push({ text: segs[i] }); i++; }
+    }
+    return hit ? out : null;
+  }
+  function runChain(segs, tag, slow, opts, my) {
+    let i = 0;
+    const next = () => {
+      if (my !== chainSeq) return;
+      if (i >= segs.length) { if (opts.onend) opts.onend(); return; }
+      const s = segs[i++];
+      if (s.clip) { playRecording(s.clip, next); return; }
+      let called = false; const once = () => { if (called) return; called = true; next(); };
+      speak(s.text.trim(), tag, slow, Object.assign({}, opts, { inChain: true, onend: once }));
+      setTimeout(once, 1500 + s.text.length * 90);
+    };
+    next();
+  }
   function speak(text, tag, slow, opts) {
     try {
+      if (!(opts && opts.inChain)) {
+        chainSeq++; try { if (clipEl) { clipEl.onended = null; clipEl.pause(); } } catch (e) { /* ignore */ }
+        const segs = momSegs(text, tag);
+        if (segs) { runChain(segs, tag, slow, opts || {}, chainSeq); return true; }
+      }
       nSeq++; try { if (nEl) nEl.pause(); } catch (e) { /* ignore */ }
       if (!(opts && opts.noNeural) && neuralOk(text, tag, opts) && speakNeural(text, tag, slow, opts)) return true;
       if (!('speechSynthesis' in window)) return false;
       const v = findVoice(tag);
       if (!v && tag.split('-')[0] === 'zu') return false;
-      speechSynthesis.cancel();
+      /* Cancelling when nothing is playing makes some phones drop the next phrase, so only cancel a phrase that is still going. */
+      if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = tag; if (v) u.voice = v;
       u.rate = clamp((state.rate || 0.8) * (slow ? 0.65 : 1) * ((opts && opts.rate) || 1), 0.3, 1.3);
       u.pitch = clamp((opts && opts.pitch) || 1.05, 0.1, 2);
       if (opts && opts.onend) u.onend = opts.onend;
+      if (opts && opts.onstart) u.onstart = opts.onstart;
       speechSynthesis.speak(u);
       return true;
     } catch (e) { return false; }
@@ -268,17 +302,20 @@
      element is "unlocked" with a silent sound during the tap and then given the real clip. */
   const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
   let clipEl = null; let clipUrl = null;
-  async function playRecording(key) {
+  async function playRecording(key, onend) {
+    let done = false; const fin = () => { if (done) return; done = true; if (onend) onend(); };
     try {
-      try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) { /* ignore */ }
+      try { if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel(); } catch (e) { /* ignore */ }
       if (!clipEl) clipEl = new Audio();
-      clipEl.pause(); clipEl.src = SILENT; const unlock = clipEl.play(); if (unlock && unlock.catch) unlock.catch(() => {});
+      clipEl.onended = null; clipEl.pause(); clipEl.src = SILENT; const unlock = clipEl.play(); if (unlock && unlock.catch) unlock.catch(() => {});
       const blob = await recGet(key);
-      if (!blob) { toast('No recording yet'); return; }
+      if (!blob) { if (!onend) toast('No recording yet'); fin(); return; }
       if (clipUrl) URL.revokeObjectURL(clipUrl);
       clipUrl = URL.createObjectURL(blob); clipEl.src = clipUrl;
-      clipEl.play().catch(() => toast('Could not play the recording.'));
-    } catch (e) { toast('Could not play the recording.'); }
+      clipEl.onended = fin;
+      clipEl.play().catch(() => { if (!onend) toast('Could not play the recording.'); fin(); });
+      setTimeout(fin, 20500);
+    } catch (e) { if (!onend) toast('Could not play the recording.'); fin(); }
   }
   function setRecUi(on) {
     const b = $('#recBtn'); if (!b) return;
@@ -367,7 +404,7 @@
     if (sub) {
       const seg = { today: 'Today’s flight plan', words: 'Word time!', play: 'Play time!', games: 'Game setup', feel: 'Feelings time', theme: 'Pick our show!', grow: 'Progress', act: 'Activities', settings: 'Settings' }[route()];
       const kidSeg = { learn: 'Learn time!', games: 'Game time!', feel: 'How do you feel?' }[route()];
-      if (isChild()) sub.textContent = 'Hi ' + (state.nick || 'friend') + '! ' + (kidSeg || '');
+      if (isChild()) sub.textContent = 'Hi ' + (state.nick || 'Solana') + '! ' + (kidSeg || '');
       else sub.textContent = 'Hi ' + (state.parentName || 'there') + '! ' + (seg || '');
     }
     const rb = $('#roleBtn'); const sb = $('#settingsBtn'); const st = $('#starBtn');
@@ -896,6 +933,7 @@
       '<p class="small muted">Change the unit itself in the School tab.</p></div>';
     hs += '<div class="card"><b>🎨 How her screens look</b><label class="f">Style</label>' + sel('look', [['retro', 'Retro preschool TV everywhere (default)'], ['mixed', 'Retro for kid screens only'], ['classic', 'Classic calm look']]) +
       '<p class="small muted">Kid screens are Games, Learn, and Feelings. Parent screens keep the calm look in the middle option.</p></div>';
+    if (S.phrases) hs += S.phrases.card(ctx);
     hs += '<div class="card"><b>Voice pack (send recordings and game settings to another device)</b><p class="small muted">Your voice clips and Game setup choices live on this device only. To put them on Solana’s device: 1. Tap Make voice pack here. 2. Tap Share and send it to her device (AirDrop or Messages). 3. On her device, switch to the grown-up view, open Settings, tap Import, and pick the file. This device has ' + recSet.size + (recSet.size === 1 ? ' recording' : ' recordings') + '. The file stays between your own devices.</p>' +
       '<div class="row"><button class="btn alt" data-act="pack-make">' + (ui.pack ? 'Make it again' : 'Make voice pack') + '</button><label class="btn alt" style="display:inline-flex;align-items:center;cursor:pointer">Import<input id="packFile" type="file" accept="application/json,.json" hidden></label></div>' +
       (ui.pack ? '<p class="small">' + 'Ready: ' + ui.pack.n + (ui.pack.n === 1 ? ' recording' : ' recordings') + ' and your game settings.' + '</p>' + '<div class="row"><button class="btn sun" data-act="pack-share">📤 Share</button><button class="btn alt" data-act="pack-save">⬇ Save file</button></div>' : '') + '</div>';
@@ -1098,6 +1136,7 @@
       case 'onboard-save': { const nk = ($('#o-nick').value || '').trim(); if (nk) state.nick = nk; } state.birth = $('#o-birth').value || ''; state.onboarded = true; save(); closeModal(); render(false); break;
       case 'onboard-skip': state.onboarded = true; save(); closeModal(); break;
       case 'splash-go': hideSplash(); break;
+      case 'mom-toggle': state.momPhrases = state.momPhrases === false; save(); render(true); break;
       case 'role-toggle':
         if (isChild()) { if (!state.pinHash) { state.role = 'parent'; save(); go('today'); render(false); } else toast('Grown-ups: press and hold the 👪 button'); }
         else if (!state.pinHash) { ui.afterPin = true; openPinSet(); }
@@ -1150,12 +1189,20 @@
   /* ---------- start ---------- */
   /* Spoken hello: Solana hears her own name; the grown-up hears a progress hello. */
   function greeting() {
-    const kid = state.nick || 'friend';
-    return isChild() ? 'Hello ' + kid + '! Let’s learn!' : 'Hello ' + (state.parentName || 'there') + '! Here’s ' + kid + '’s progress.';
+    /* The opening screen is hers, so it always greets Solana by name, whichever view is open. */
+    return 'Hi ' + (state.nick || 'Solana') + '! Let’s learn!';
+  }
+  function splashName() { const e = $('#splashName'); if (e) e.textContent = 'Hi, ' + (state.nick || 'Solana') + '!'; }
+  /* Say "Hi Solana!" right after Play. If the phone did not start speaking, try once more. */
+  function greetNow() {
+    let started = false; const text = greeting();
+    speak(text, 'en-US', false, { onstart: () => { started = true; } });
+    if (state.neural || !('speechSynthesis' in window)) return;
+    setTimeout(() => { if (!started && !speechSynthesis.speaking) speak(text, 'en-US', false, { onstart: () => { started = true; } }); }, 900);
   }
   function hideSplash() {
     const sp = $('#splash'); if (!sp || sp.hidden) return;
-    sp.hidden = true; speak(greeting(), 'en-US');
+    sp.hidden = true; greetNow();
     if (!state.onboarded && !isChild()) openOnboarding();
   }
   S.fun.mount(); S.games.mount(ctx);
@@ -1167,7 +1214,7 @@
     ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => rb.addEventListener(ev, stop));
   })();
   render(false);
-  if (state.look !== 'classic') { $('#splash').hidden = false; } else if (!state.onboarded && !isChild()) openOnboarding();
+  if (state.look !== 'classic') { splashName(); $('#splash').hidden = false; } else if (!state.onboarded && !isChild()) openOnboarding();
   /* Stop pinch and double-tap zoom (iOS ignores the viewport setting). */
   ['gesturestart', 'gesturechange', 'gestureend'].forEach((ev) => document.addEventListener(ev, (e) => e.preventDefault()));
   let lastTouch = 0;

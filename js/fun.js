@@ -237,7 +237,7 @@
     const cur = () => { const l = cardList(ctx, p); return l.length ? l[((p.i % l.length) + l.length) % l.length] : null; };
     if (a !== 'mrec' && ctx.rec.active()) ctx.rec.stop(); /* leaving the card ends a recording */
     switch (a) {
-      case 'pvoice': st.charVoice = d.v; ctx.save(); ctx.render(true); say(ctx, 'Hello ' + (ctx.state.nick || 'friend') + '! Let’s learn!', 'en-US'); return true;
+      case 'pvoice': st.charVoice = d.v; ctx.save(); ctx.render(true); say(ctx, 'Hello ' + (ctx.state.nick || 'Solana') + '! Let’s learn!', 'en-US'); return true;
       case 'mplay': ctx.rec.play(d.key); return true;
       case 'mrec': {
         if (ctx.rec.active()) { ctx.rec.stop(); return true; }
