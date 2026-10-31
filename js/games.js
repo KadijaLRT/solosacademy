@@ -219,6 +219,22 @@
     return sec === 'letters' ? ((st.letterWins || {})[id] || 0) : ((st.gameWins || {})[winKey(ctx, sec, id)] || 0);
   }
   function isM(ctx, sec, id) { return SA.masteryOk(ctx.state, keyOf(ctx, sec, id), winsOf(ctx, sec, id)); }
+  /* ---------- variety: she should not see the same thing again and again ---------- */
+  const DAY_CAP = 3; const REVIEW_DAYS = 3;
+  function noteSeen(ctx, sec, id) {
+    if (previewing(ctx)) return;
+    const st = ctx.state; st.seen = st.seen || {}; const k = keyOf(ctx, sec, id); const today = ctx.dkey();
+    const s = st.seen[k] || { d: '', n: 0, t: 0 }; if (s.d !== today) { s.d = today; s.n = 0; } s.n += 1; s.t = Date.now(); st.seen[k] = s;
+    const ks = Object.keys(st.seen); if (ks.length > 700) ks.sort((a, b) => st.seen[a].t - st.seen[b].t).slice(0, ks.length - 600).forEach((x) => { delete st.seen[x]; });
+  }
+  /* Best first: things she has seen the least today and the longest ago. Items seen 3 times today, and mastered items seen in the last 3 days, wait unless nothing else is left. */
+  function rankFresh(ctx, sec, items) {
+    const today = ctx.dkey(); const now = Date.now(); const seen = ctx.state.seen || {};
+    return items.map((x) => {
+      const s = seen[keyOf(ctx, sec, x.id)]; const nToday = s && s.d === today ? s.n : 0; const days = s ? (now - s.t) / 864e5 : 99; const m = isM(ctx, sec, x.id);
+      return { x, blocked: nToday >= DAY_CAP || (m && days < REVIEW_DAYS) ? 1 : 0, score: Math.random() + nToday * 2 + (m ? 1.5 : 0) - Math.min(days, 14) * 0.1 };
+    }).sort((a, b) => (a.blocked - b.blocked) || (a.score - b.score)).map((r) => r.x);
+  }
   /* A wrong try on a question. Two or more wrong tries before the right one means the right answer does not count (she may be tapping everything). */
   function miss(ctx, sec, id) {
     const g = ctx.ui.games; if (!g || previewing(ctx)) return;
@@ -263,8 +279,9 @@
     return n.length ? n : items;
   }
   function pickNeedy(ctx, g, all, k) {
-    let items = pick(needyOf(ctx, g, all), k);
-    if (items.length < k) items = items.concat(pick(all.filter((x) => items.indexOf(x) < 0), k - items.length));
+    let items = rankFresh(ctx, g.sec, needyOf(ctx, g, all)).slice(0, k);
+    if (items.length < k) items = items.concat(rankFresh(ctx, g.sec, all.filter((x) => items.indexOf(x) < 0)).slice(0, k - items.length));
+    items.forEach((x) => noteSeen(ctx, g.sec, x.id));
     return items;
   }
   function rainbow(bands, small) {
@@ -358,7 +375,7 @@
       grp('Spoken instructions', 'A voice explains how to play the first time she opens each game.', chips(ctx, [['1', '🔊 On'], ['0', '🔇 Off']], helpOn(ctx) ? '1' : '0', 'ghelp', 'v')) + '</div>';
     h += '<div class="card center"><button class="btn sun" data-act="gpreview">👀 Try Solana’s games</button><p class="small muted" style="margin-bottom:0">Nothing you do in the preview counts toward her stars or progress.</p></div>';
     h += '<div class="card note"><b>Her device</b><p class="small muted" style="margin-bottom:0">These choices are saved on this device. To copy them to Solana’s device, make a voice pack in Settings and import it there. It carries your recordings and these game settings.</p></div>';
-    return h + progressCard(ctx) + (SA.parent ? SA.parent.lightRules(ctx) : '');
+    return h + progressCard(ctx) + '<div class="card"><b>🔀 Keeps it fresh</b><p class="small muted" style="margin:6px 0 0">So she learns instead of memorizing: each word, letter or shape shows at most 3 times a day; mastered ones come back only after a few days; Let’s go changes its order and games each time; after the same game twice she is moved on to a different one; answer choices, prompts, skill questions, word card order and stories change from day to day.</p></div>' + (SA.parent ? SA.parent.lightRules(ctx) : '');
   }
 
   /* ---------- Solana's view: big and simple ---------- */
@@ -373,8 +390,9 @@
     const bt = { letters: [SA.ic('letters'), 'Letters'], numbers: [SA.ic('numbers'), 'Numbers'], colors: [SA.ic('colors'), 'Colors'], shapes: [SA.ic('shapes'), 'Shapes'] };
     const pathDone = (st.pathDays || []).indexOf(ctx.dkey()) >= 0;
     const pathTile = '<button class="gbig pathbig" data-act="gpath"><span>' + SA.ic(pathDone ? 'check' : 'plane') + '</span>' + (pathDone ? 'Play again!' : 'Let’s go!') + '</button>';
+    const traceTile = '<button class="gbig" data-act="gtrace"><span>✏️</span>Trace it!</button>';
     const thinkTile = '<button class="gbig" data-act="gskills"><span>' + (SA.picSvg('brain') || '🧠') + '</span>Think it!</button>';
-    const tiles = pathTile + base.map((k) => '<button class="gbig" data-act="gsec" data-s="' + k + '"><span>' + bt[k][0] + '</span>' + bt[k][1] + '</button>').join('') + thinkTile +
+    const tiles = pathTile + base.map((k) => '<button class="gbig" data-act="gsec" data-s="' + k + '"><span>' + bt[k][0] + '</span>' + bt[k][1] + '</button>').join('') + traceTile + thinkTile +
       (c.secs.words ? (SA.topicOrder || SA.units.map((u) => u.id)).map((id) => SA.units.find((u) => u.id === id)).filter(Boolean).map((u) =>
         '<button class="gbig" style="background:linear-gradient(160deg,' + u.c2 + ',' + u.c1 + ')" data-act="gtopic" data-id="' + u.id + '"><span>' + SA.topicIc(u) + '</span>' + ctx.esc(u.name) + (u.school ? ' 🏫' : '') + '</button>').join('') : '');
     return '<div class="card gtop"><div class="rbcol">' + rainbow(n, true) + '<div class="small muted">' + n + ' of 7 · 🌈 ' + (st.rainbows || 0) + '</div></div>' +
@@ -427,7 +445,7 @@
         target = L.find((x) => x.l === w.w.slice(-1).toUpperCase()); pic = w.e; word = w.w; end = true; used.push('e:' + w.w);
       } else {
         const pool = needyOf(ctx, g, L); const fresh = pool.filter((x) => used.indexOf(x.id) < 0);
-        target = pick(fresh.length ? fresh : pool, 1)[0]; pic = target.e; word = target.w; end = !!target.end; used.push(target.id);
+        target = rankFresh(ctx, 'letters', fresh.length ? fresh : pool)[0]; noteSeen(ctx, 'letters', target.id); pic = target.e; word = target.w; end = !!target.end; used.push(target.id);
       }
       const others = pick(L.filter((x) => x.id !== target.id), 3);
       g.pop = { n, used, target, opts: shuffle([target].concat(others)), pic, word, end };
@@ -446,15 +464,19 @@
     }
     const items = itemsFor(ctx, g); const pool = needyOf(ctx, g, items);
     const fresh = pool.filter((x) => used.indexOf(x.id) < 0);
-    const target = pick(fresh.length ? fresh : pool, 1)[0];
+    const target = rankFresh(ctx, g.sec, fresh.length ? fresh : pool)[0]; noteSeen(ctx, g.sec, target.id);
     let cand = items.filter((x) => x.id !== target.id && !(target.e && x.e === target.e)); if (cand.length < 3) cand = items.filter((x) => x.id !== target.id);
     if (sentenceOn(ctx, g, target)) { /* a sentence must not name another picture on the screen */
       const sent = String(g.lang === 'tl' ? target.spEs : target.sp).toLowerCase();
       const named = (x) => { const w = String(g.lang === 'tl' ? x.tl.text : x.en).toLowerCase().replace(/^(la|el|los|las|un|una) /, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); return new RegExp('(^|[^a-záéíóúñ])' + w + '(s|es)?([^a-záéíóúñ]|$)').test(sent); };
       const clean = cand.filter((x) => !named(x)); if (clean.length >= 3) cand = clean;
     }
-    const others = pick(cand, 3);
-    g.pop = { n, used: used.concat([target.id]), target, opts: shuffle([target].concat(others)) };
+    const prev = g.pop && g.pop.opts ? g.pop.opts.map((o) => o.id) : []; const prevAt = g.pop && g.pop.opts && g.pop.target ? g.pop.opts.findIndex((o) => o.id === g.pop.target.id) : -1;
+    const fresher = cand.filter((x) => prev.indexOf(x.id) < 0);
+    const others = pick(fresher.length >= 3 ? fresher : cand, 3);
+    const opts = shuffle([target].concat(others));
+    if (opts.length > 1 && opts.indexOf(target) === prevAt) { const j = (prevAt + 1 + Math.floor(Math.random() * (opts.length - 1))) % opts.length; const tmp = opts[j]; opts[j] = target; opts[prevAt] = tmp; }
+    g.pop = { n, used: used.concat([target.id]), target, opts, v: Math.floor(Math.random() * 3) };
     g.lock = false; g.tok++;
   }
   const sentenceOn = (ctx, g, t) => g.sec === 'words' && LV(ctx, 'words') >= 2 && !!(g.lang === 'tl' ? (focus(ctx) === 'es' ? t.spEs : '') : t.sp);
@@ -466,12 +488,13 @@
       return 'What is ' + A.en + (p.sub ? ' take away ' : ' plus ') + B.en + '?';
     }
     if (sentenceOn(ctx, g, t)) return g.lang === 'tl' ? t.spEs : t.sp;
-    if (g.sec === 'letters') return 'Pop the letter ' + t.l + '!';
+    const v = (g.pop && g.pop.v) || 0; const ask = (what) => [what.pop, 'Can you find ' + what.the + '?', 'Where is ' + what.the + '?'][v];
+    if (g.sec === 'letters') return ask({ pop: 'Pop the letter ' + t.l + '!', the: 'the letter ' + t.l });
     if (g.sec === 'words' && g.lang === 'tl') return nm + '!';
-    if (g.sec === 'numbers') return es ? t.es + '!' : 'Pop the number ' + t.en + '!';
-    if (g.sec === 'colors') return es ? t.es + '!' : 'Pop the ' + nm + ' balloon!';
+    if (g.sec === 'numbers') return es ? t.es + '!' : ask({ pop: 'Pop the number ' + t.en + '!', the: 'the number ' + t.en });
+    if (g.sec === 'colors') return es ? t.es + '!' : ask({ pop: 'Pop the ' + nm + ' balloon!', the: 'the ' + nm + ' balloon' });
     if (es) return nm + '!';
-    return 'Pop the ' + nm + '!';
+    return ask({ pop: 'Pop the ' + nm + '!', the: 'the ' + nm });
   }
   /* Solana cannot read yet, so every prompt is spoken. The text is small and for the grown-up. */
   function popView(ctx, g) {
@@ -542,7 +565,7 @@
       const last = g.board && g.board.n ? g.board.n : 0;
       const cand = SA.numbers.filter((x) => x.n <= max && x.n !== last);
       const needy = g.practice ? cand.filter((x) => !isM(ctx, 'numbers', String(x.n))) : cand;
-      const num = pick(needy.length ? needy : cand, 1)[0] || SA.numbers[2];
+      const num = rankFresh(ctx, 'numbers', (needy.length ? needy : cand).map((x) => Object.assign({ id: String(x.n) }, x)))[0] || SA.numbers[2]; noteSeen(ctx, 'numbers', String(num.n));
       const thing = pick(SA.countThings, 1)[0];
       const total = Math.min(num.n + 2, 22);
       g.board = { kind: 'count', n: num.n, thing, tiles: Array.from({ length: total }, (_, i) => ({ key: 't' + i, match: 'x', html: '<b class="em">' + thing.e + '</b>' })), placed: {}, count: 0, done: false };
@@ -644,6 +667,7 @@
     if (g.screen === 'letter') return h + letterCard(ctx, g);
     if (g.screen === 'lgrid') return h + lgridView(ctx, g);
     if (g.screen === 'skills') return h + SA.skills.view(ctx);
+    if (g.screen === 'trace') return h + SA.trace.view(ctx);
     if (g.screen === 'sec') return h + secView(ctx, g);
     if (g.screen === 'done') return h + doneView(ctx, g);
     if (g.screen === 'play') {
@@ -662,6 +686,7 @@
     if (gamesFor(ctx, g.sec).indexOf(which) < 0) return;
     if (g.practice && (which === 'pop' || which === 'drag' || which === 'count' || which === 'sound')) { const all = itemsFor(ctx, g); if (all.length && all.every((x) => isM(ctx, g.sec, x.id))) ctx.toast('Everything here is mastered! Playing with everything.'); }
     g.game = which; g.screen = 'play'; g.full = false; g.miss = {};
+    if (!previewing(ctx)) { const st = ctx.state; st.lastGame = st.lastGame || {}; st.lastGame[g.sec] = which; st.recentGames = (st.recentGames || []).concat([g.sec + ':' + which]).slice(-6); }
     if (which === 'pop' || which === 'sound' || which === 'add') { g.pop = null; newPop(ctx, g); }
     else if (which === 'sing') { g.sing = null; newSing(ctx, g); g.tok++; }
     else { g.board = null; newBoard(ctx, g, which); }
@@ -679,10 +704,16 @@
     return false;
   }
   /* Guided path: a short walk through the day's games, one after another. */
+  /* Let's go: a different order and a different game in each section than last time. */
   function buildPath(ctx) {
-    const c = cfg(ctx); const want = [['letters', 'pop'], ['numbers', 'pop'], ['words', 'drag'], ['colors', 'pop'], ['shapes', 'drag'], ['numbers', 'sing']];
+    const c = cfg(ctx); const st = ctx.state; st.lastGame = st.lastGame || {};
     const g = GS(ctx); const keep = g.sec; const out = [];
-    want.forEach((w) => { if (c.secs[w[0]]) { g.sec = w[0]; if (gamesFor(ctx, w[0]).indexOf(w[1]) >= 0) out.push({ sec: w[0], game: w[1] }); } });
+    shuffle(['letters', 'numbers', 'words', 'colors', 'shapes']).forEach((sec) => {
+      if (!c.secs[sec]) return; g.sec = sec;
+      const opts = gamesFor(ctx, sec).filter((x) => x !== 'build' || sec === 'words' || sec === 'letters');
+      const fresh = opts.filter((x) => x !== st.lastGame[sec]); const choice = pick(fresh.length ? fresh : opts, 1)[0];
+      if (choice) out.push({ sec, game: choice });
+    });
     g.sec = keep; return out.slice(0, 5);
   }
   function pathStep(ctx, g) {
@@ -739,6 +770,7 @@
   };
   G.handle = function (a, d, ctx) {
     const g = GS(ctx); const f = F();
+    if (a === 'gtrace' || a.indexOf('gtr-') === 0) { SA.kid.stop(); g.path = null; return SA.trace.handle(a, d, ctx, g); }
     if (a === 'gskills' || a.indexOf('gsk-') === 0) { SA.kid.stop(); g.path = null; return SA.skills.handle(a, d, ctx, g); }
     if (a === 'ghub' || a === 'gexit' || a === 'gback' || a === 'gsec' || a === 'gtopic') { SA.kid.stop(); g.path = null; }
     switch (a) {
@@ -768,7 +800,17 @@
         try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) { /* ignore */ }
         ctx.render(false); return true;
       case 'gagain': promptSayAny(ctx, g); return true;
-      case 'gagain-game': startGame(ctx, g, g.game); return true;
+      case 'gagain-game': {
+        /* After the same game twice in a row, move her on to something different. */
+        const rg = ctx.state.recentGames || []; const cur = g.sec + ':' + g.game;
+        if (rg.length >= 2 && rg[rg.length - 1] === cur && rg[rg.length - 2] === cur) {
+          const c = cfg(ctx); const keepSec = g.sec; const cands = [];
+          SECS.forEach((sec) => { if (!c.secs[sec] || sec === 'words' && wordItems(ctx).length < 4) return; g.sec = sec; gamesFor(ctx, sec).forEach((x) => { if (rg.slice(-4).indexOf(sec + ':' + x) < 0) cands.push([sec, x]); }); });
+          g.sec = keepSec; const nx = pick(cands, 1)[0];
+          if (nx) { g.sec = nx[0]; f.say(ctx, 'Let us try something new!', 'en-US', false, true); startGame(ctx, g, nx[1]); return true; }
+        }
+        startGame(ctx, g, g.game); return true;
+      }
       case 'gletter': if (ctx.rec.active()) ctx.rec.stop(); g.letter = +d.i; g.screen = 'letter'; ctx.render(false); f.say(ctx, letterPhrase(letterItems()[g.letter]), 'en-US', false, true); return true;
       case 'gletternav': if (ctx.rec.active()) ctx.rec.stop(); g.letter = (g.letter + (+d.d) + 26) % 26; ctx.render(true); f.say(ctx, letterPhrase(letterItems()[g.letter]), 'en-US', false, true); return true;
       case 'gsayletter': f.say(ctx, letterPhrase(letterItems()[g.letter]), 'en-US', d.slow === '1', true); return true;
@@ -805,6 +847,7 @@
   G.api = { get reward() { return reward; }, get sYay() { return sYay; }, get sNo() { return sNo; }, get praise() { return praise; }, get previewing() { return previewing; }, get rainbow() { return rainbow; }, get beep() { return beep; } };
   G.mount = function (ctx) { G._ctx = ctx;
     if (SA.skills && SA.skills.mount) SA.skills.mount(ctx);
+    if (SA.trace && SA.trace.mount) SA.trace.mount(ctx);
     const view = document.getElementById('view'); let drag = null;
     function snapBack(el) { el.style.transition = 'transform .2s'; el.style.transform = ''; setTimeout(() => { el.style.transition = ''; }, 220); }
     view.addEventListener('pointerdown', (e) => {

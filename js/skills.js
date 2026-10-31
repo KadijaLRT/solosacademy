@@ -143,7 +143,12 @@
 
   /* ---------- flow ---------- */
   function newRound(ctx, g, sk) {
-    const q = MAKERS[sk.game](ctx);
+    let q = MAKERS[sk.game](ctx);
+    /* Never the same question as one of her last few, even from an earlier day. */
+    const sigOf = (x) => { try { return JSON.stringify([x.kind, x.say, x.seq && x.seq.map((c) => c.id || c), x.ans, x.opts && x.opts.map((o) => o.id), x.ask, x.shown && x.shown.map((e) => e.id || e), x.sizes, x.counts, x.pads && x.pads.length]); } catch (e) { return ''; } };
+    const lq = (ctx.state.lastQ = ctx.state.lastQ || {}); const recent = lq[sk.game] || [];
+    for (let tries = 0; tries < 8 && recent.indexOf(sigOf(q)) >= 0; tries++) q = MAKERS[sk.game](ctx);
+    if (!API().previewing(ctx)) { lq[sk.game] = recent.concat([sigOf(q)]).slice(-5); }
     if (q.kind === 'more') q.ansIdx = q.ans;
     else if (q.opts) q.ansIdx = q.opts.findIndex((o) => o.id === q.ans);
     sk.q = q; sk.lock = false; sk.picked = null; sk.screen = 'play';

@@ -93,7 +93,7 @@
   };
   K.v_learn_topics = function (ctx) { return bar(true) + grid(topicTiles(ctx)); };
   K.v_learn_cards = function (ctx, t) {
-    const u = F().unitOf(ctx); const list = F().wordsOf(ctx, u); t.i = ((t.i % list.length) + list.length) % list.length; const w = list[t.i]; const tl = F().tlFor(ctx, w);
+    const u = F().unitOf(ctx); const list = kidWords(ctx, u); t.i = ((t.i % list.length) + list.length) % list.length; const w = list[t.i]; const tl = F().tlFor(ctx, w);
     return bar(true) + '<div class="card center gcard"><div class="big-em">' + SA.pic(w.emoji, w.pic || w.en) + '</div><div class="big-word">' + ctx.esc(w.en) + '</div>' +
       '<div class="row" style="justify-content:center;margin-top:8px"><button class="btn iconbtn big" data-act="ksay" data-k="en" aria-label="English">🇺🇸</button><button class="btn coral iconbtn big" data-act="ksay" data-k="tl" aria-label="' + ctx.esc(tl.name) + '">' + tl.flag + '</button></div>' +
       '<div class="row between" style="margin-top:14px"><button class="btn alt iconbtn big" data-act="knav" data-d="-1" aria-label="Previous">◀</button><button class="btn sun iconbtn big" data-act="knav" data-d="1" aria-label="Next">▶</button></div></div>';
@@ -116,17 +116,26 @@
     (H, T, w, W, F) => 'Knock, knock! Who is there? "' + W + '!" ' + H + ' opened the door and learned something. ' + F + ' ' + H + ' said "' + W + '" three times, and it sounded better every time.',
     (H, T, w, W, F) => 'Before bedtime, ' + H + ' remembered one thing about ' + T + ': the word "' + w + '". ' + F + ' ' + H + ' whispered "' + W + '," and Mommy whispered it back. Then ' + H + ' went to sleep with a smile.'
   ];
+  /* Her word list is in a new order each day (same all day), so the cards are never the same walk-through. */
+  function kidWords(ctx, u) {
+    const list = F().wordsOf(ctx, u).slice(); let h = 2166136261;
+    const seed = String(ctx.dkey()) + (u.ids || [u.id]).join('+'); for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    const rnd = () => { h = (h + 0x6D2B79F5) | 0; let t = Math.imul(h ^ (h >>> 15), 1 | h); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const x = list[i]; list[i] = list[j]; list[j] = x; }
+    return list;
+  }
   function storyText(ctx, w, u) {
     const H = F().hero(ctx).name; const x = w.en; const uid = w._u || u.id; const own = SA.units.find((q) => q.id === uid) || u;
     const fact = (SA.wordFacts && SA.wordFacts[uid + ':' + x]) || F().H(ctx, w.spidey || '');
     const theme = (SA.unitThemes && SA.unitThemes[uid]) || String(own.name || '').toLowerCase();
     const cap = x.charAt(0).toUpperCase() + x.slice(1);
     let h = 0; for (let i = 0; i < x.length; i++) h = (h * 31 + x.charCodeAt(i)) >>> 0;
+    const dk = String(ctx.dkey()); for (let i = 0; i < dk.length; i++) h = (h * 31 + dk.charCodeAt(i)) >>> 0;
     return SHAPES[h % SHAPES.length](H, theme, x.toLowerCase(), cap, fact);
   }
   K.storyText = storyText;
   K.v_learn_story = function (ctx, t) {
-    const u = F().unitOf(ctx); const list = F().wordsOf(ctx, u); const w = list[((t.si % list.length) + list.length) % list.length];
+    const u = F().unitOf(ctx); const list = kidWords(ctx, u); const w = list[((t.si % list.length) + list.length) % list.length];
     return bar(true) + '<div class="card center gcard"><div class="big-em">' + SA.pic(w.emoji, w.pic || w.en) + '</div><div class="big-word" style="font-size:19px;line-height:1.45;text-align:left">' + ctx.esc(storyText(ctx, w, u)) + '</div>' +
       '<div class="row" style="justify-content:center;margin-top:8px"><button class="btn iconbtn big" data-act="ksay" data-k="story" aria-label="Hear it">🔊</button><button class="btn sun iconbtn big" data-act="kstory" aria-label="Next">▶</button></div></div>';
   };
@@ -177,9 +186,9 @@
   function speakScreen(ctx) {
     const tab = ctx.ui.kidTab; const t = T(ctx, tab); const scr = t.stack.length ? t.stack[t.stack.length - 1] : 'hub';
     const u = F().unitOf(ctx);
-    if (scr === 'cards') { const list = F().wordsOf(ctx, u); const w = list[((t.i % list.length) + list.length) % list.length]; if (hasMom(ctx, w, 'en')) { ctx.rec.play(momKey(ctx, w, 'en')); return true; } return say(ctx, w.en, 'en-US', false); }
+    if (scr === 'cards') { const list = kidWords(ctx, u); const w = list[((t.i % list.length) + list.length) % list.length]; if (hasMom(ctx, w, 'en')) { ctx.rec.play(momKey(ctx, w, 'en')); return true; } return say(ctx, w.en, 'en-US', false); }
     if (scr === 'stop') { const x = ctx.plan.stops().find((s) => s.id === t.stop); return say(ctx, (x && x.line) || 'Let us go!'); }
-    if (scr === 'story') { const list = F().wordsOf(ctx, u); const w = list[((t.si % list.length) + list.length) % list.length]; return say(ctx, storyText(ctx, w, u)); }
+    if (scr === 'story') { const list = kidWords(ctx, u); const w = list[((t.si % list.length) + list.length) % list.length]; return say(ctx, storyText(ctx, w, u)); }
     if (scr === 'song') return K.sing(ctx, SA.songDrills[t.drill].steps[t.step].say, 'en-US');
     if (scr === 'quiz') { const z = quizList(ctx, t); return say(ctx, z.qs[t.fi % z.qs.length].q); }
     const label = { 'learn:hub': 'Pick one', 'learn:topics': 'Pick a topic', 'learn:songs': 'Pick a song', 'learn:langs': 'Pick a language', 'learn:today': 'Pick a stop', 'learn:mine': myActs(ctx).length ? 'Tap one' : 'Nothing yet', 'learn:cats': 'Pick one', 'learn:list': 'Tap a picture', 'feel:hub': 'Pick one', 'feel:movies': 'Pick a show', 'feel:faces': 'How do you feel?', 'feel:breath': 'Let us fly and breathe' }[tab + ':' + scr];
@@ -194,9 +203,9 @@
       case 'kback': K.stop(); t.stack.pop(); ctx.render(false); K.enter(ctx); return true;
       case 'kagain': speakScreen(ctx); return true;
       case 'ktopic': { F().handle('unit-set', { id: d.id }, ctx); t.i = 0; t.si = 0; t.fi = 0; t.stack.push('cards'); ctx.render(false); say(ctx, F().unitOf(ctx).name); setTimeout(() => speakScreen(ctx), 1200); return true; }
-      case 'knav': { const list = F().wordsOf(ctx, u); t.i = (t.i + (+d.d) + list.length) % list.length; ctx.render(false); speakScreen(ctx); return true; }
+      case 'knav': { const list = kidWords(ctx, u); t.i = (t.i + (+d.d) + list.length) % list.length; ctx.render(false); speakScreen(ctx); return true; }
       case 'ksay': {
-        if (d.k === 'tl') { const list = F().wordsOf(ctx, u); const w = list[((t.i % list.length) + list.length) % list.length]; const tl = F().tlFor(ctx, w); const lg = ctx.state.focusLang || 'es'; if (hasMom(ctx, w, lg)) { ctx.rec.play(momKey(ctx, w, lg)); return true; } if (!F().say(ctx, tl.text, tl.tag)) ctx.toast('No ' + tl.name + ' voice on this device.'); return true; }
+        if (d.k === 'tl') { const list = kidWords(ctx, u); const w = list[((t.i % list.length) + list.length) % list.length]; const tl = F().tlFor(ctx, w); const lg = ctx.state.focusLang || 'es'; if (hasMom(ctx, w, lg)) { ctx.rec.play(momKey(ctx, w, lg)); return true; } if (!F().say(ctx, tl.text, tl.tag)) ctx.toast('No ' + tl.name + ' voice on this device.'); return true; }
         if (d.k === 'stop') return speakScreen(ctx), true;
         if (d.k === 'en') return speakScreen(ctx), true;
         if (d.k === 'sing') return speakScreen(ctx), true;

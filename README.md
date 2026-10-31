@@ -70,6 +70,14 @@ Five sections, with the games each one has:
 - **Spoken instructions:** each game explains how to play out loud the first time it starts, and the ❓ button repeats it any time. The on/off switch is in Game settings. Spanish instructions play only when she is practicing Spanish.
 - **Please check:** the Spanish number, color, and shape words and the Spanish chant lines are standard, but ask a Spanish speaker to listen once.
 
+## Keeps it fresh (no memorizing)
+
+Solana's games avoid repeats on purpose: a word, letter, number or shape shows at most 3 times a day; a mastered one comes back only after 3 days; **Let's go** uses a different order and different games each time; after the same game twice in a row the play-again button moves her to a different game; prompts, answer choices and their positions change each round; Think it! questions never repeat her last few; her word cards use a new order each day and each word's story changes by day.
+
+## Trace it!
+
+Games, **Trace it!**: she traces with her finger along a dotted guide with green start dots (numbered when a letter needs more than one stroke). Groups: lines and shapes (8), numbers 0 to 9, capital letters A to Z, and the letters of her nickname. Checking is gentle: she passes when she covers most of the guide and stays near it, in any stroke order, and a back-and-forth scribble does not pass. The dotted guide gets fainter as her level rises. Progress shows what she has traced under Progress, Tracing.
+
 ## Your voice in the games
 
 Settings, 👧 Solana tab, **Your voice in the games**: 23 short lines the games repeat most (praise, quick cheers, try again, starting, finishing). Record each once. Whenever a spoken line contains one of them, your clip plays in place of the phone voice; the rest of the line still uses the phone voice. Spanish and other languages are not replaced. Turn it off with the "Using my voice" chip. The clips travel in the voice pack.

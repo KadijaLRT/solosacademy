@@ -19,7 +19,7 @@
   const WBY = {}; S.words.forEach((w) => { WBY[w.id] = w; });
   const CATBY = {}; S.categories.forEach((c) => { CATBY[c.id] = c; });
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-  const APP_VERSION = 64;
+  const APP_VERSION = 68;
   const KID_TABS = [['games', '🎈', 'Games'], ['learn', '📚', 'Learn'], ['feel', '💛', 'Feelings']];
   const PARENT_TABS = [['today', '🏠', 'Today'], ['theme', '🏫', 'School'], ['grow', '🚀', 'Progress'], ['act', '🎭', 'Activities']];
 
@@ -838,7 +838,12 @@
   function gTile(id, em, label, status) {
     return '<button class="gtile" data-act="gtab" data-t="' + id + '"><span class="gt-em">' + em + '</span><b>' + label + '</b><span class="gt-st">' + status + '</span></button>';
   }
-  const GTITLES = { feels: ['💛', 'Feelings'], log: ['📈', 'Daily log'], pass: ['🛂', 'Language passport'], skills: ['🧠', 'Skill games'], levels: ['🚀', 'Her levels'] };
+  function viewTrace() {
+    const rows = S.trace.progress(ctx);
+    return '<div class="card"><p class="small">Solana traces lines, shapes, numbers, letters and her name in Games, under Trace it! It counts a piece when she follows most of the guide. Green means she has traced it at least once.</p></div>' +
+      rows.map((x) => '<div class="card"><b>' + esc(x.t) + '</b> <span class="small muted">' + x.done.length + ' of ' + x.n + '</span><div class="pgrid">' + x.all.map((nm) => '<span class="pbadge ' + (x.done.indexOf(nm) >= 0 ? 'm' : '') + '">' + esc(nm) + '</span>').join('') + '</div></div>').join('');
+  }
+  const GTITLES = { feels: ['💛', 'Feelings'], log: ['📈', 'Daily log'], pass: ['🛂', 'Language passport'], trace: ['✏️', 'Tracing'], skills: ['🧠', 'Skill games'], levels: ['🚀', 'Her levels'] };
   function viewGrow() {
     const t = GTITLES[ui.gtab] ? ui.gtab : 'hub';
     if (t === 'hub') {
@@ -846,6 +851,7 @@
       const lv = S.stage.level(state);
       return '<h2>Progress</h2><div class="grid g2">' +
         gTile('pass', S.ic('words'), 'Language passport', masteredSet().size + ' words mastered in games') +
+        gTile('trace', '✏️', 'Tracing', S.trace.progress(ctx).reduce((n, x) => n + x.done.length, 0) + ' traced') +
         gTile('skills', S.picSvg ? S.picSvg('brain') : '🧠', 'Skill games', S.skills.info.reduce((n, x) => n + S.skills.winsOf(ctx, x.id), 0) + ' right answers') +
         gTile('levels', S.ic('grow'), 'Her levels', 'Level ' + lv + (S.stage.ageText(state) ? ' · ' + esc(S.stage.ageText(state)) : '')) +
         gTile('feels', S.ic('heart'), 'Feelings', f ? 'Today: ' + esc(f.name) : 'None today') +
@@ -857,6 +863,7 @@
     if (t === 'levels') return head + growLevels();
     if (t === 'pass') return head + viewPassport();
     if (t === 'skills') return head + viewSkills();
+    if (t === 'trace') return head + viewTrace();
     return head;
   }
   /* ---------- ACTIVITIES ---------- */
@@ -1189,10 +1196,9 @@
   /* ---------- start ---------- */
   /* Spoken hello: Solana hears her own name; the grown-up hears a progress hello. */
   function greeting() {
-    /* The opening screen is hers, so it always greets Solana by name, whichever view is open. */
-    return 'Hi ' + (state.nick || 'Solana') + '! Let’s learn!';
+    const kid = state.nick || 'Solana';
+    return isChild() ? 'Hi ' + kid + '! Let’s learn!' : 'Hi ' + (state.parentName || 'there') + '! Here’s ' + kid + '’s progress.';
   }
-  function splashName() { const e = $('#splashName'); if (e) e.textContent = 'Hi, ' + (state.nick || 'Solana') + '!'; }
   /* Say "Hi Solana!" right after Play. If the phone did not start speaking, try once more. */
   function greetNow() {
     let started = false; const text = greeting();
@@ -1214,7 +1220,7 @@
     ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => rb.addEventListener(ev, stop));
   })();
   render(false);
-  if (state.look !== 'classic') { splashName(); $('#splash').hidden = false; } else if (!state.onboarded && !isChild()) openOnboarding();
+  if (state.look !== 'classic') { $('#splash').hidden = false; } else if (!state.onboarded && !isChild()) openOnboarding();
   /* Stop pinch and double-tap zoom (iOS ignores the viewport setting). */
   ['gesturestart', 'gesturechange', 'gestureend'].forEach((ev) => document.addEventListener(ev, (e) => e.preventDefault()));
   let lastTouch = 0;
